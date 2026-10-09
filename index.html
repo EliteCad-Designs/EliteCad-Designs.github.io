@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EliteCAD Tools - Revit Add-ins</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        :root {
+            --bg: #0F0F12;
+            --surface: #18181D;
+            --surface2: #222229;
+            --border: #2E2E38;
+            --border-light: #3D3D4A;
+            --text: #E8E8ED;
+            --text-dim: #9898A8;
+            --text-muted: #5A5A6A;
+
+            --scan: #5ED5DD;
+            --scan-dim: rgba(94, 213, 221, 0.12);
+            --draft: #F5B878;
+            --draft-dim: rgba(245, 184, 120, 0.12);
+            --coord: #6EE7A8;
+            --coord-dim: rgba(110, 231, 168, 0.12);
+            --core: #A78BFA;
+            --core-dim: rgba(167, 139, 250, 0.12);
+            --clash: #F87171;
+            --clash-dim: rgba(248, 113, 113, 0.12);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Dot grid background */
+        .tech-grid-bg {
+            background-image:
+                linear-gradient(rgba(46, 46, 56, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(46, 46, 56, 0.15) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(24, 24, 29, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--surface2), var(--bg));
+            border: 1px solid var(--border-light);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+        }
+
+        .logo-text h1 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .logo-text h1 span {
+            font-weight: 400;
+            color: var(--text-dim);
+        }
+
+        .logo-text p {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .status-text {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            padding: 10px 20px 0;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            position: relative;
+            padding: 12px 28px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-dim);
+            background: rgba(34, 34, 41, 0.5);
+        }
+
+        .tab.active {
+            background: var(--surface);
+            border-color: var(--border);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--surface);
+        }
+
+        .tab.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .tab.active[data-region="scan"] { color: var(--scan); }
+        .tab.active[data-region="scan"]::before { background: var(--scan); }
+        .tab.active[data-region="draft"] { color: var(--draft); }
+        .tab.active[data-region="draft"]::before { background: var(--draft); }
+        .tab.active[data-region="coord"] { color: var(--coord); }
+        .tab.active[data-region="coord"]::before { background: var(--coord); }
+        .tab.active[data-region="core"] { color: var(--core); }
+        .tab.active[data-region="core"]::before { background: var(--core); }
+        .tab.active[data-region="clash"] { color: var(--clash); }
+        .tab.active[data-region="clash"]::before { background: var(--clash); }
+
+        /* Ribbon */
+        .ribbon {
+            display: flex;
+            height: 120px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            padding: 0 20px;
+        }
+
+        .ribbon::-webkit-scrollbar {
+            height: 5px;
+        }
+
+        .ribbon::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .ribbon::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .ribbon::-webkit-scrollbar-thumb:hover {
+            background: var(--border-light);
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            padding: 0 12px;
+            min-width: max-content;
+        }
+
+        .panel-tools {
+            display: flex;
+            flex: 1;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 4px;
+        }
+
+        .panel-label {
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            margin: 0 -8px;
+            padding: 0 8px;
+        }
+
+        .panel-label span {
+            font-family: 'Space Mono', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        /* Tool Button */
+        .tool-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            width: 72px;
+            height: 72px;
+            padding: 6px 4px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tool-btn:hover {
+            background: var(--surface2);
+            border-color: var(--border);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .tool-btn.selected {
+            border-color: var(--border-light);
+        }
+
+        .tool-btn .icon {
+            width: 36px; /* Increased from 28px to showcase the detailed SVG */
+            height: 36px;
+            color: var(--text);
+            transition: color 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .tool-btn .icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .tool-btn .label {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--text);
+            text-align: center;
+            line-height: 1.1;
+            max-width: 100%;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        /* Hover glow by region */
+        [data-active-region="scan"] .tool-btn:hover { box-shadow: 0 2px 12px rgba(94, 213, 221, 0.15); }
+        [data-active-region="draft"] .tool-btn:hover { box-shadow: 0 2px 12px rgba(245, 184, 120, 0.15); }
+        [data-active-region="coord"] .tool-btn:hover { box-shadow: 0 2px 12px rgba(110, 231, 168, 0.15); }
+        [data-active-region="core"] .tool-btn:hover { box-shadow: 0 2px 12px rgba(167, 139, 250, 0.15); }
+        [data-active-region="clash"] .tool-btn:hover { box-shadow: 0 2px 12px rgba(248, 113, 113, 0.15); }
+
+        /* Selected states by region */
+        [data-active-region="scan"] .tool-btn.selected { background: var(--scan-dim); border-color: var(--scan); box-shadow: 0 0 12px rgba(94, 213, 221, 0.2); }
+        [data-active-region="scan"] .tool-btn.selected .icon { color: var(--scan); }
+        [data-active-region="scan"] .tool-btn.selected .label { color: var(--scan); }
+
+        [data-active-region="draft"] .tool-btn.selected { background: var(--draft-dim); border-color: var(--draft); box-shadow: 0 0 12px rgba(245, 184, 120, 0.2); }
+        [data-active-region="draft"] .tool-btn.selected .icon { color: var(--draft); }
+        [data-active-region="draft"] .tool-btn.selected .label { color: var(--draft); }
+
+        [data-active-region="coord"] .tool-btn.selected { background: var(--coord-dim); border-color: var(--coord); box-shadow: 0 0 12px rgba(110, 231, 168, 0.2); }
+        [data-active-region="coord"] .tool-btn.selected .icon { color: var(--coord); }
+        [data-active-region="coord"] .tool-btn.selected .label { color: var(--coord); }
+
+        [data-active-region="core"] .tool-btn.selected { background: var(--core-dim); border-color: var(--core); box-shadow: 0 0 12px rgba(167, 139, 250, 0.2); }
+        [data-active-region="core"] .tool-btn.selected .icon { color: var(--core); }
+        [data-active-region="core"] .tool-btn.selected .label { color: var(--core); }
+
+        [data-active-region="clash"] .tool-btn.selected { background: var(--clash-dim); border-color: var(--clash); box-shadow: 0 0 12px rgba(248, 113, 113, 0.2); }
+        [data-active-region="clash"] .tool-btn.selected .icon { color: var(--clash); }
+        [data-active-region="clash"] .tool-btn.selected .label { color: var(--clash); }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .main-content.tech-grid-bg {
+            padding: 32px;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .breadcrumb .current {
+            color: var(--text-dim);
+        }
+
+        /* Detail Card */
+        .detail-card {
+            flex: 1;
+            display: flex;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .detail-main {
+            flex: 1;
+            padding: 36px;
+            overflow-y: auto;
+            animation: fadeIn 0.25s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .detail-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding-bottom: 24px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-icon {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        [data-active-region="scan"] .detail-icon { box-shadow: 0 0 20px rgba(94, 213, 221, 0.1); }
+        [data-active-region="draft"] .detail-icon { box-shadow: 0 0 20px rgba(245, 184, 120, 0.1); }
+        [data-active-region="coord"] .detail-icon { box-shadow: 0 0 20px rgba(110, 231, 168, 0.1); }
+        [data-active-region="core"] .detail-icon { box-shadow: 0 0 20px rgba(167, 139, 250, 0.1); }
+        [data-active-region="clash"] .detail-icon { box-shadow: 0 0 20px rgba(248, 113, 113, 0.1); }
+
+        .detail-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Fallback for lucide icons in detail view */
+        .detail-icon i {
+            width: 48px;
+            height: 48px;
+        }
+
+        .detail-title h2 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .detail-badges {
+            display: flex;
+            gap: 8px;
+        }
+
+        .badge {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            padding: 4px 10px;
+            background: var(--surface2);
+            color: var(--text-dim);
+            text-transform: uppercase;
+            border-radius: 4px;
+        }
+
+        .badge.active {
+            background: var(--scan-dim);
+            color: var(--scan);
+        }
+
+        [data-active-region="draft"] .badge.active { background: var(--draft-dim); color: var(--draft); }
+        [data-active-region="coord"] .badge.active { background: var(--coord-dim); color: var(--coord); }
+        [data-active-region="core"] .badge.active { background: var(--core-dim); color: var(--core); }
+        [data-active-region="clash"] .badge.active { background: var(--clash-dim); color: var(--clash); }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .detail-box {
+            padding: 18px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--scan);
+            border-radius: 0 6px 6px 0;
+        }
+
+        .detail-box::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .detail-box::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .detail-box::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .detail-box::-webkit-scrollbar-thumb:hover {
+            background: var(--border-light);
+        }
+
+        .detail-main::-webkit-scrollbar,
+        .detail-sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .detail-main::-webkit-scrollbar-track,
+        .detail-sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .detail-main::-webkit-scrollbar-thumb,
+        .detail-sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .detail-main::-webkit-scrollbar-thumb:hover,
+        .detail-sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--border-light);
+        }
+
+        .detail-box-large {
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .detail-box-large p {
+            color: var(--text-muted) !important;
+            font-style: italic;
+        }
+
+        [data-active-region="draft"] .detail-box { border-left-color: var(--draft); }
+        [data-active-region="coord"] .detail-box { border-left-color: var(--coord); }
+        [data-active-region="core"] .detail-box { border-left-color: var(--core); }
+        [data-active-region="clash"] .detail-box { border-left-color: var(--clash); }
+
+        .detail-box p {
+            font-size: 14px;
+            line-height: 1.75;
+            color: var(--text);
+        }
+
+        .detail-box.mono p {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .detail-meta {
+            display: flex;
+            gap: 16px;
+        }
+
+        .meta-item {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .meta-item .label {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .meta-item .value {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--text);
+        }
+
+        /* Sidebar */
+        .detail-sidebar {
+            width: 280px;
+            background: var(--bg);
+            border-left: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-props {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .prop {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .prop .label {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .prop .value {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--text);
+        }
+
+        .prop .color-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        /* Download Section */
+        .download-section {
+            margin-top: auto;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px;
+            background: var(--scan);
+            color: var(--bg);
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .download-btn:hover {
+            filter: brightness(1.1);
+            transform: scale(1.02);
+            box-shadow: 0 4px 16px rgba(94, 213, 221, 0.3);
+        }
+
+        [data-active-region="draft"] .download-btn:hover { box-shadow: 0 4px 16px rgba(245, 184, 120, 0.3); }
+        [data-active-region="coord"] .download-btn:hover { box-shadow: 0 4px 16px rgba(110, 231, 168, 0.3); }
+        [data-active-region="core"] .download-btn:hover { box-shadow: 0 4px 16px rgba(167, 139, 250, 0.3); }
+        [data-active-region="clash"] .download-btn:hover { box-shadow: 0 4px 16px rgba(248, 113, 113, 0.3); }
+
+        [data-active-region="draft"] .download-btn { background: var(--draft); }
+        [data-active-region="coord"] .download-btn { background: var(--coord); }
+        [data-active-region="core"] .download-btn { background: var(--core); }
+        [data-active-region="clash"] .download-btn { background: var(--clash); }
+
+        .download-btn i {
+            width: 18px;
+            height: 18px;
+        }
+
+        .download-version {
+            margin-bottom: 8px;
+            text-align: center;
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .download-info {
+            margin-top: 12px;
+            text-align: center;
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .download-btn.disabled {
+            background: var(--surface2);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            cursor: not-allowed;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .download-btn.disabled:hover {
+            filter: none;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Docs Button */
+        .docs-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            color: var(--scan);
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            text-decoration: none;
+            border: 1px solid var(--scan);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 10px;
+        }
+
+        .docs-btn:hover {
+            background: var(--scan-dim);
+            transform: scale(1.02);
+            box-shadow: 0 4px 16px rgba(94, 213, 221, 0.2);
+        }
+
+        .docs-btn i {
+            width: 16px;
+            height: 16px;
+        }
+
+        [data-active-region="draft"] .docs-btn { color: var(--draft); border-color: var(--draft); }
+        [data-active-region="draft"] .docs-btn:hover { background: var(--draft-dim); box-shadow: 0 4px 16px rgba(245, 184, 120, 0.2); }
+        [data-active-region="coord"] .docs-btn { color: var(--coord); border-color: var(--coord); }
+        [data-active-region="coord"] .docs-btn:hover { background: var(--coord-dim); box-shadow: 0 4px 16px rgba(110, 231, 168, 0.2); }
+        [data-active-region="core"] .docs-btn { color: var(--core); border-color: var(--core); }
+        [data-active-region="core"] .docs-btn:hover { background: var(--core-dim); box-shadow: 0 4px 16px rgba(167, 139, 250, 0.2); }
+        [data-active-region="clash"] .docs-btn { color: var(--clash); border-color: var(--clash); }
+        [data-active-region="clash"] .docs-btn:hover { background: var(--clash-dim); box-shadow: 0 4px 16px rgba(248, 113, 113, 0.2); }
+
+        /* Requirements Section */
+        .requirements-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .requirements-title {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .requirements-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .requirement-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        .requirement-item svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            margin-top: 2px;
+            stroke-width: 2;
+        }
+
+        .requirement-item span {
+            line-height: 1.4;
+        }
+
+        .requirements-empty {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Changelog Column */
+        .detail-changelog {
+            width: 260px;
+            background: var(--bg);
+            border-left: 1px solid var(--border);
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .detail-changelog .changelog-content {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        .empty-state i {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state span {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Release info */
+        .release-info {
+            padding: 24px;
+        }
+
+        .release-info h2 {
+            font-family: 'Space Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0 0 16px 0;
+        }
+
+        .release-info h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            margin: 20px 0 8px 0;
+        }
+
+        .release-info p {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.6;
+            margin: 0 0 8px 0;
+        }
+
+        .release-info strong {
+            color: var(--text);
+        }
+
+        .release-info ol,
+        .release-info ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .release-info ul {
+            list-style: disc;
+        }
+
+        .release-info ol li,
+        .release-info ul li {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.8;
+        }
+
+        .release-info ul li a {
+            color: var(--scan);
+            text-decoration: none;
+        }
+
+        .release-info ul li a:hover {
+            text-decoration: underline;
+        }
+
+        .release-info code {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        @media (max-width: 900px) {
+            .detail-sidebar,
+            .detail-changelog {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app" data-active-region="scan">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="box" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>EliteCAD<span>Tools</span></h1>
+                    <p>Ribbon Configuration System v1.0</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="status">
+                    <div class="status-dot" style="background: var(--scan);"></div>
+                    <span class="status-text">System Active</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-region="scan">ELITE SCAN</button>
+            <button class="tab" data-region="draft">ELITE DRAFT</button>
+            <button class="tab" data-region="coord">ELITE COORD</button>
+            <button class="tab" data-region="core">ELITE CORE</button>
+            <button class="tab" data-region="clash">CLASH MANAGER</button>
+        </div>
+
+        <!-- Ribbon -->
+        <div class="ribbon" id="ribbon">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content tech-grid-bg">
+            <div class="content-wrapper">
+                <div class="breadcrumb">
+                    <span id="breadcrumb-region">ELITE SCAN</span> / <span class="current" id="breadcrumb-tool">Overview</span>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-main" id="detail-main">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="detail-sidebar">
+                        <h4 class="sidebar-title">Properties</h4>
+                        <div class="sidebar-props">
+                            <div class="prop">
+                                <span class="label">Status</span>
+                                <span class="value">Production Ready</span>
+                            </div>
+                            <div class="prop">
+                                <span class="label">Add-in</span>
+                                <span class="value" id="sidebar-addin">EliteScan</span>
+                            </div>
+                            <div class="prop">
+                                <span class="label" id="sidebar-platform-label">Revit Versions</span>
+                                <span class="value" id="sidebar-platform-versions">2022 - 2026</span>
+                            </div>
+                        </div>
+
+                        <div class="requirements-section" id="requirements-section">
+                            <h4 class="requirements-title">Requirements</h4>
+                            <div class="requirements-list" id="requirements-list">
+                                <span class="requirements-empty">Select a tool to view requirements</span>
+                            </div>
+                        </div>
+
+                        <div class="download-section">
+                            <a href="docs/EliteScan-Tutorial.html" target="_blank" class="docs-btn" id="docs-btn">
+                                <i data-lucide="book-open"></i>
+                                <span>Documentation</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="detail-changelog" id="changelog-section">
+                        <h4 class="sidebar-title">Changelog</h4>
+                        <div class="changelog-content" id="changelog-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CUSTOM ICON SYSTEM (Imported from EliteRibbons) ---
+        
+        const customIcons = [
+            // --- SCAN ---
+            { id: 'Settings', group: 'scan', path: '<g transform="translate(28,36) rotate(45) scale(1.25) translate(-32,-32)"><path d="M 29 54 L 29 28 Q 29 22 20 20 L 20 8 L 26 8 L 26 16 Q 32 20 38 16 L 38 8 L 44 8 L 44 20 Q 35 22 35 28 L 35 54 A 3 3 0 0 1 29 54 Z" fill="none" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor"/></g>' },
+            { id: 'RunAnalysis', group: 'scan', path: '<path d="M20 2V46L52 24Z" fill="currentColor" stroke="none"/><path d="M3 55H62" stroke="white" stroke-width="5" stroke-dasharray="2 2"/>' },
+            { id: 'ViewReport', group: 'scan', path: '<rect x="4" y="2" width="56" height="58" rx="3" stroke="currentColor" stroke-width="5" fill="none"/><path d="M10 11H54 M10 20H54 M10 29H36.4" stroke="white" stroke-width="5"/><circle cx="46" cy="46" r="9" fill="#5A5A6A"/>' },
+            { id: '360Viewer', group: 'scan', path: '<circle cx="32" cy="32" r="29" stroke="currentColor" stroke-width="5" fill="none"/><path d="M3 32H61 M32 3V61" stroke="white" stroke-width="5"/><path d="M32 15.47C40.41 15.47 48.53 23.59 48.53 32C48.53 40.41 40.41 48.53 32 48.53" stroke="white" stroke-width="5" fill="none"/>' },
+            { id: 'ShowOverlay', group: 'scan', path: '<path d="M32 4L55 14L32 24L9 14Z" stroke="currentColor" stroke-width="5" fill="currentColor" fill-opacity="0.5"/><path d="M9 30L32 40L55 30" stroke="white" stroke-width="5" fill="none"/><path d="M9 46L32 56L55 46" stroke="currentColor" stroke-width="5" fill="none"/>' },
+            { id: 'ClearOverlay', group: 'scan', path: '<path d="M32 6L54 16L32 26L10 16Z" stroke="white" stroke-width="5" fill="none"/><path d="M10 33L32 43L54 33" stroke="white" stroke-width="5" fill="none"/><path d="M4 59L59 4" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>' },
+            { id: 'Revit2ReCap', group: 'scan', path: '<rect x="3" y="16" width="29" height="29" stroke="white" stroke-width="5" fill="none"/><circle cx="51" cy="33" r="4" fill="currentColor"/><circle cx="58" cy="18" r="4" fill="currentColor"/><circle cx="41" cy="11" r="4" fill="currentColor"/><circle cx="55" cy="51" r="4" fill="currentColor"/><path d="M34 32H41" stroke="white" stroke-width="5"/>' },
+            { id: 'CloudReset', group: 'scan', path: '<path d="M20.7 58.7 A29 29 0 1 1 49.5 55.2" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M18.4 53.1L20.7 58.7L15.1 60.9" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="32" cy="32" r="3" fill="white"/><circle cx="38" cy="28" r="3" fill="white"/><circle cx="26" cy="36" r="3" fill="white"/>' },
+
+            // --- DRAFT ---
+            { id: 'HangerSettings', group: 'draft', path: '<path d="M32 1V30" stroke="currentColor" stroke-width="5"/><path d="M14 20H50" stroke="currentColor" stroke-width="5"/><path d="M14 20V40Q14 58 32 58Q50 58 50 40V20" stroke="currentColor" stroke-width="5" fill="none"/><g transform="translate(36, 39) rotate(45) scale(2) translate(-16, -16)"><path d="M 14 28 L 14 14 Q 14 10 10 9 L 10 4 L 12 4 L 12 7 Q 16 9 20 7 L 20 4 L 22 4 L 22 9 Q 18 10 18 14 L 18 28 A 2 2 0 0 1 14 28 Z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></g>' },
+            { id: 'TagSettings', group: 'draft', path: '<path d="M6 10L13 3H56V59H6Z" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="15" cy="12" r="2" fill="#5A5A6A"/><g transform="translate(36, 39) rotate(45) scale(2) translate(-16, -16)"><path d="M 14 28 L 14 14 Q 14 10 10 9 L 10 4 L 12 4 L 12 7 Q 16 9 20 7 L 20 4 L 22 4 L 22 9 Q 18 10 18 14 L 18 28 A 2 2 0 0 1 14 28 Z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></g>' },
+            { id: 'SinglePipes', group: 'draft', path: '<path d="M32 1V30" stroke="white" stroke-width="5"/><path d="M14 20H50" stroke="currentColor" stroke-width="5"/><path d="M14 20V40Q14 58 32 58Q50 58 50 40V20" stroke="currentColor" stroke-width="5" fill="none"/>' },
+            { id: 'PipeRack', group: 'draft', path: '<path d="M5 0V62 M58 0V62" stroke="currentColor" stroke-width="5"/><path d="M0 52H64" stroke="currentColor" stroke-width="5"/><circle cx="16" cy="42" r="5" stroke="white" stroke-width="5" fill="none"/><circle cx="32" cy="42" r="5" stroke="white" stroke-width="5" fill="none"/><circle cx="48" cy="42" r="5" stroke="white" stroke-width="5" fill="none"/>' },
+            { id: 'DuctHangers', group: 'draft', path: '<rect x="3" y="2" width="2" height="59" stroke="currentColor" stroke-width="5" fill="none"/><rect x="59" y="2" width="2" height="59" stroke="currentColor" stroke-width="5" fill="none"/><path d="M5 8H59 M5 56H59" stroke="white" stroke-width="5"/><path d="M11 8L53 55 M11 55L53 8" stroke="white" stroke-width="1" opacity="1"/>' },
+            { id: 'RackAdjustment', group: 'draft', path: '<rect x="2" y="28" width="59" height="8" fill="currentColor"/><path d="M32 5V58" stroke="white" stroke-width="5"/><path d="M24.67 16L32 5L39.33 16" stroke="white" stroke-width="5" fill="none"/><path d="M24.67 47L32 58L39.33 47" stroke="white" stroke-width="5" fill="none"/>' },
+            { id: 'AuditHangers', group: 'draft', path: '<rect x="16" y="12" width="34" height="40" stroke="white" stroke-width="5" fill="none"/><path d="M24 33.2L29.4 38.6L42 26" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+            { id: 'FillInfo', group: 'draft', path: '<path d="M57.5 6.5L47.9 25.3L38.7 16.1Z" fill="white"/><path d="M47.9 25.3L38.7 16.1L10.4 44.4L19.6 53.6Z" fill="currentColor"/><path d="M19.6 53.6L10.4 44.4L1.9 52.9L11.1 62.1Z" fill="#5A5A6A"/>' },
+            { id: 'ElbowExtension', group: 'draft', path: '<rect x="3" y="3" width="33" height="3" stroke="currentColor" stroke-width="5" fill="none"/><rect x="56" y="28" width="3" height="33" stroke="currentColor" stroke-width="5" fill="none"/><path d="M7 6V59H56" stroke="white" stroke-width="5" fill="none"/><path d="M32 6V31H56" stroke="white" stroke-width="5" fill="none"/>' },
+            { id: 'Transition', group: 'draft', path: '<path d="M3 3H27L39 15H60V47H39L27 59H3V3Z" stroke="white" stroke-width="5" fill="none"/><line x1="27" y1="3" x2="27" y2="59" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>' },
+            { id: 'BatchSpools', group: 'draft', path: '<rect x="3" y="18" width="42" height="42" fill="#222" stroke="currentColor" stroke-width="5"/><rect x="10.5" y="10.5" width="42" height="42" fill="#222" stroke="#5A5A6A" stroke-width="5"/><rect x="18" y="3" width="42" height="42" fill="#222" stroke="white" stroke-width="5"/>' },
+            { id: 'Renumber', group: 'draft', path: '<text x="18" y="51" font-size="48" font-weight="bold" fill="white" font-family="sans-serif">#</text><path d="M31 7A27 27 0 1 1 4.59 28.39" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M31 2.5V7H35.5" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/>' },
+            { id: 'NumberDuct', group: 'draft', path: '<circle cx="32" cy="12" r="6.5" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="12" cy="32" r="6.5" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="52" cy="32" r="6.5" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="32" cy="52" r="6.5" stroke="currentColor" stroke-width="5" fill="none"/><path d="M27.2 16.8 L16.8 27.2 M19 32 H45 M36.8 47.2 L47.2 36.8" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/>' },
+            { id: 'IsolateService', group: 'draft', path: '<path d="M3 32C3 32 11 12 31.5 12C52 12 60 32 60 32C60 32 52 52 31.5 52C11 52 3 32 3 32Z" stroke="white" stroke-width="5" fill="none"/><circle cx="31.5" cy="32" r="14" fill="currentColor"/>' },
+            { id: 'HideService', group: 'draft', path: '<path d="M3 32C3 32 11 12 31.5 12C52 12 60 32 60 32C60 32 52 52 31.5 52C11 52 3 32 3 32Z" stroke="#5A5A6A" stroke-width="5" fill="none"/><line x1="10" y1="10" x2="54" y2="54" stroke="currentColor" stroke-width="12"/>' },
+            { id: 'SelectAnnotations', group: 'draft', path: '<path d="M37.3 10.9 L32 16 M13.6 21.3 L5.9 19.2 M16 32 L10.9 37.3 M19.2 5.9 L21.3 13.6" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M25 25 L54 37 L42.5 39.8 a2.7 2.7 0 0 0 -2 2 L37.7 53.3 Z" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+            { id: 'IsolateAnnotations', group: 'draft', path: '<path d="M8 19 V13 a5 5 0 0 1 5-5 h6" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M45 8 h6 a5 5 0 0 1 5 5 v6" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M56 45 v6 a5 5 0 0 1 -5 5 h-6" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M19 56 h-6 a5 5 0 0 1 -5 -5 v-6" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="32" cy="32" r="8" fill="currentColor"/>' },
+            { id: 'MoveConnect', group: 'draft', path: '<path d="M 4 22 H 16 M 4 42 H 16" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/><line x1="16" y1="14" x2="16" y2="50" stroke="white" stroke-width="5" stroke-linecap="round"/><path d="M 60 22 H 48 M 60 42 H 48" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/><line x1="48" y1="14" x2="48" y2="50" stroke="white" stroke-width="5" stroke-linecap="round"/><path d="M 42 32 H 26 M 34 24 L 26 32 L 34 40" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+            { id: 'MoCoAlign', group: 'draft', path: '<path d="M 12 46 H 44" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M 18 46 V 60 M 38 46 V 60" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M 30 16 L 50 36" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M 30 16 L 42 4 M 50 36 L 62 24" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M 46 16 A 22 22 0 0 0 28 32 M 36 26 L 28 32 L 26 22" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+            { id: 'MatchFab', group: 'draft', path: '<rect x="28" y="12" width="24" height="24" rx="2" stroke="#5A5A6A" stroke-width="5" stroke-linejoin="round" fill="none"/><line x1="28" y1="24" x2="52" y2="24" stroke="#5A5A6A" stroke-width="5" stroke-linecap="round"/><rect x="12" y="28" width="24" height="24" rx="2" stroke="white" stroke-width="5" stroke-linejoin="round" fill="none"/><line x1="12" y1="40" x2="36" y2="40" stroke="white" stroke-width="5" stroke-linecap="round"/><path d="M 26 38 L 34 46 L 50 22" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+            { id: 'SaveBlueprint', group: 'draft', path: '<path d="M 28 56 H 12 V 6 H 36 L 52 22 V 28" stroke="white" stroke-width="5" stroke-linejoin="round" fill="none"/><path d="M 36 6 V 22 H 52" stroke="white" stroke-width="5" stroke-linejoin="round" fill="none"/><line x1="22" y1="32" x2="42" y2="32" stroke="white" stroke-width="5" stroke-linecap="round"/><line x1="22" y1="44" x2="28" y2="44" stroke="white" stroke-width="5" stroke-linecap="round"/><path d="M 46 36 V 56 M 36 46 H 56" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+            { id: 'Blueprints', group: 'draft', path: '<rect x="6" y="6" width="52" height="52" rx="4" stroke="white" stroke-width="5" stroke-linejoin="round" fill="none"/><line x1="6" y1="20" x2="58" y2="20" stroke="white" stroke-width="5" stroke-linecap="round"/><line x1="16" y1="28" x2="40" y2="28" stroke="white" stroke-width="5" stroke-linecap="round"/><line x1="16" y1="52" x2="32" y2="52" stroke="white" stroke-width="5" stroke-linecap="round"/><rect x="12" y="36" width="40" height="8" rx="2" fill="currentColor"/>' },
+            { id: 'QuickTag', group: 'draft', path: '<path d="M6 10L13 3H56V59H6Z" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="15" cy="12" r="3" fill="#5A5A6A"/><line x1="11" y1="22" x2="52" y2="22" stroke="white" stroke-width="5"/><line x1="11" y1="34" x2="52" y2="34" stroke="white" stroke-width="5"/>' },
+
+            // --- COORD ---
+            { id: 'DWGOverrides', group: 'coord', path: '<text x="1" y="42" font-size="22" font-weight="bold" fill="currentColor" font-family="sans-serif">DWG</text><g transform="translate(36, 39) rotate(45) scale(2) translate(-16, -16)"><path d="M 14 28 L 14 14 Q 14 10 10 9 L 10 4 L 12 4 L 12 7 Q 16 9 20 7 L 20 4 L 22 4 L 22 9 Q 18 10 18 14 L 18 28 A 2 2 0 0 1 14 28 Z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></g>' },
+            { id: 'MaterialMapping', group: 'coord', path: '<circle cx="32" cy="32" r="29" stroke="currentColor" stroke-width="5" fill="none"/><ellipse cx="32" cy="32" rx="13" ry="29" stroke="currentColor" stroke-width="5" fill="none"/><ellipse cx="32" cy="32" rx="29" ry="8" stroke="currentColor" stroke-width="5" fill="none"/><g transform="translate(36, 39) rotate(45) scale(2) translate(-16, -16)"><path d="M 14 28 L 14 14 Q 14 10 10 9 L 10 4 L 12 4 L 12 7 Q 16 9 20 7 L 20 4 L 22 4 L 22 9 Q 18 10 18 14 L 18 28 A 2 2 0 0 1 14 28 Z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></g>' },
+            { id: 'ApplyColors', group: 'coord', path: '<text x="1" y="42" font-size="22" font-weight="bold" fill="white" font-family="sans-serif">DWG</text><path d="M44 2L60 18L44 34" fill="currentColor" stroke="none"/>' },
+            { id: 'ApplyMaterials', group: 'coord', path: '<circle cx="32" cy="32" r="29" stroke="white" stroke-width="5" fill="none"/><ellipse cx="32" cy="32" rx="13" ry="29" stroke="white" stroke-width="5" fill="none"/><ellipse cx="32" cy="32" rx="29" ry="8" stroke="white" stroke-width="5" fill="none"/><path d="M44 2L60 18L44 34" fill="currentColor" stroke="none"/>' },
+            { id: 'CreateScopes', group: 'coord', path: '<rect x="12" y="12" width="40" height="40" stroke="white" stroke-width="5" stroke-dasharray="4 2" fill="none"/><line x1="12" y1="12" x2="5.64" y2="5.64" stroke="currentColor" stroke-width="5"/><path d="M1.39 1.39L9.88 1.39L1.39 9.88Z" fill="currentColor"/><line x1="52" y1="12" x2="57.66" y2="6.34" stroke="currentColor" stroke-width="5"/><path d="M61.9 2.1L61.9 10.59L53.41 2.1Z" fill="currentColor"/><line x1="12" y1="52" x2="6.34" y2="57.66" stroke="currentColor" stroke-width="5"/><path d="M2.1 61.9L2.1 53.41L10.59 61.9Z" fill="currentColor"/><line x1="52" y1="52" x2="57.66" y2="57.66" stroke="currentColor" stroke-width="5"/><path d="M61.9 61.9L53.41 61.9L61.9 53.41Z" fill="currentColor"/>' },
+            { id: 'ResetScope', group: 'coord', path: '<rect x="18" y="18" width="29" height="29" stroke="white" stroke-width="5" fill="none"/><path d="M32 4A28 28 0 1 1 8.52 16.75" stroke="currentColor" stroke-width="5" fill="none" stroke-dasharray="2 2"/><path d="M19.58 14.4L8.52 16.75L6.16 5.68" fill="currentColor" stroke="none"/>' },
+            { id: 'ClashViewer', group: 'coord', path: '<rect x="3" y="3" width="49" height="49" stroke="white" stroke-width="5" fill="none"/><rect x="11" y="11" width="49" height="49" stroke="currentColor" stroke-width="5" fill="none"/><path d="M31.5 31.5L52 3M3 52L31.5 31.5" stroke="currentColor" stroke-width="5"/><circle cx="31.5" cy="31.5" r="12" fill="red"/>' },
+
+            // --- CORE ---
+            { id: 'SyncSettings', group: 'core', path: '<path d="M35.7 16.4 A16 16 0 0 1 35.7 47.6" stroke="currentColor" stroke-width="5" fill="none"/><path d="M28.3 47.6 A16 16 0 0 1 28.3 16.4" stroke="currentColor" stroke-width="5" fill="none"/><path d="M39.8 43.1 L35.7 47.6 L41.4 49.7" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M24.2 20.9 L28.3 16.4 L22.6 14.3" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="32" cy="32" r="26" stroke="white" stroke-width="5" fill="none"/><path d="M32 6L32 3 M47.3 11L49 8.5 M56.7 24L59.6 23 M56.7 40L59.6 41 M47.3 53L49 55.5 M32 58L32 61 M16.7 53L15 55.5 M7.3 40L4.4 41 M7.3 24L4.4 23 M16.7 11L15 8.5" stroke="white" stroke-width="5" stroke-linecap="round"/>' },
+            { id: 'SyncLog', group: 'core', path: '<path d="M3 3H47L60 16V60H3V3Z" stroke="white" stroke-width="5" fill="none"/><path d="M47 3V16H60" stroke="white" stroke-width="5" fill="none"/><line x1="9" y1="15" x2="34" y2="15" stroke="#5A5A6A" stroke-width="5"/><circle cx="44" cy="44" r="16" fill="#18181D" stroke="currentColor" stroke-width="5"/><path d="M44 36V44L50.4 50.4" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' },
+            { id: 'UserWorkset', group: 'core', path: '<circle cx="32" cy="20" r="17" stroke="white" stroke-width="5" fill="none"/><path d="M4 59C4 41 18 41 32 41C46 41 60 41 60 59" stroke="white" stroke-width="5" fill="none"/><rect x="37" y="40" width="16" height="16" rx="2" fill="currentColor" stroke="currentColor" stroke-width="5"/>' },
+            { id: 'LinkWorksets', group: 'core', path: '<rect x="3" y="20" width="30" height="20" rx="10" stroke="white" stroke-width="5" fill="none"/><rect x="30" y="20" width="30" height="20" rx="10" stroke="#5A5A6A" stroke-width="5" fill="none"/><rect x="37" y="40" width="16" height="16" rx="2" fill="currentColor" stroke="currentColor" stroke-width="5"/>' },
+            { id: 'SetupWizard', group: 'core', path: '<line x1="6" y1="58" x2="36" y2="28" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M41 2L47 16L61 22L47 28L41 42L35 28L21 22L35 16Z" fill="white"/><path d="M56 4L57.8 8.2L62 10L57.8 11.8L56 16L54.2 11.8L50 10L54.2 8.2Z" fill="#5A5A6A"/><path d="M30 0L31.8 4.2L36 6L31.8 7.8L30 12L28.2 7.8L24 6L28.2 4.2Z" fill="#5A5A6A"/>' },
+            { id: 'TabColorSettings', group: 'core', path: '<rect x="4" y="7" width="16" height="12" fill="#5A5A6A"/><rect x="4" y="7" width="16" height="50" stroke="currentColor" stroke-width="5" fill="none"/><rect x="24" y="7" width="16" height="12" fill="#5A5A6A"/><rect x="24" y="7" width="16" height="50" stroke="currentColor" stroke-width="5" fill="none"/><rect x="44" y="7" width="16" height="12" fill="#5A5A6A"/><rect x="44" y="7" width="16" height="50" stroke="currentColor" stroke-width="5" fill="none"/><g transform="translate(34, 33) rotate(45) scale(2) translate(-16, -16)"><path d="M 14 28 L 14 14 Q 14 10 10 9 L 10 4 L 12 4 L 12 7 Q 16 9 20 7 L 20 4 L 22 4 L 22 9 Q 18 10 18 14 L 18 28 A 2 2 0 0 1 14 28 Z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></g>' },
+            { id: 'ToggleColors', group: 'core', path: '<rect x="5" y="7" width="16" height="12" fill="currentColor"/><rect x="5" y="7" width="16" height="50" stroke="white" stroke-width="5" fill="none"/><rect x="24" y="7" width="16" height="12" fill="#5A5A6A"/><rect x="24" y="7" width="16" height="50" stroke="white" stroke-width="5" fill="none"/><rect x="43" y="7" width="16" height="12" fill="currentColor"/><rect x="43" y="7" width="16" height="50" stroke="white" stroke-width="5" fill="none"/>' },
+            { id: 'BatchExport', group: 'core', path: '<rect x="3" y="18" width="42" height="42" fill="#222" stroke="currentColor" stroke-width="5"/><rect x="10.5" y="10.5" width="42" height="42" fill="#222" stroke="#5A5A6A" stroke-width="5"/><rect x="18" y="3" width="42" height="42" fill="#222" stroke="white" stroke-width="5"/>' },
+            { id: 'MatchProperties', group: 'core', path: '<path d="M 27 27 L 37 37 L 15 51 Z" fill="currentColor"/><line x1="26" y1="28" x2="36" y2="38" stroke="white" stroke-width="6" stroke-linecap="round"/><line x1="55" y1="9" x2="33" y2="31" stroke="white" stroke-width="6" stroke-linecap="round"/><path d="M 11 56 Q 22 50 33 55" stroke="white" stroke-width="5" stroke-linecap="round" fill="none"/>' },
+            { id: 'CutPlaneUp', group: 'core', path: '<path d="M8 46 H56" stroke="white" stroke-width="5" stroke-linecap="round"/><path d="M32 44 V17 M21 28 L32 16 L43 28" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+            { id: 'CutPlaneDown', group: 'core', path: '<path d="M8 18 H56" stroke="white" stroke-width="5" stroke-linecap="round"/><path d="M32 20 V47 M21 36 L32 48 L43 36" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' },
+            { id: 'CategoryVisibility', group: 'core', path: '<path d="M32 6 L56 18 V46 L32 58 L8 46 V18 Z" stroke="white" stroke-width="5" stroke-linejoin="round" fill="none"/><path d="M8 18 L32 30 L56 18 M32 30 V58" stroke="currentColor" stroke-width="5" stroke-linejoin="round" fill="none"/>' },
+        ];
+
+        // MAPPING: Links App Tool IDs to Custom Icon IDs
+        const ICON_MAP = {
+            // Scan
+            'settings': 'Settings',
+            'run_analysis': 'RunAnalysis',
+            'view_report': 'ViewReport',
+            '360_viewer': '360Viewer',
+            '360_pane': '360Pane',
+            'show_overlay': 'ShowOverlay',
+            'clear_overlay': 'ClearOverlay',
+            'revit_2_recap': 'Revit2ReCap',
+            'cloud_reset': 'CloudReset',
+            
+            // Draft
+            'hanger_settings': 'HangerSettings',
+            'single_pipes': 'SinglePipes',
+            'pipe_rack': 'PipeRack',
+            'duct_hangers': 'DuctHangers',
+            'rack_adjustment': 'RackAdjustment',
+
+            'fill_info': 'FillInfo',
+            'quick_tag': 'QuickTag',
+            'tag_settings': 'TagSettings',
+            'elbow_extension': 'ElbowExtension',
+            'transition': 'Transition',
+            'batch_spools': 'BatchSpools',
+            'renumber': 'Renumber',
+            'number_duct': 'NumberDuct',
+            'isolate_service': 'IsolateService',
+            'hide_service': 'HideService',
+            'select_annotations': 'SelectAnnotations',
+            'isolate_with_annotations': 'IsolateAnnotations',
+            'move_connect': 'MoveConnect',
+            'moco_align': 'MoCoAlign',
+            'match_fab': 'MatchFab',
+            'save_blueprint': 'SaveBlueprint',
+            'blueprints': 'Blueprints',
+
+            // Coord
+            'dwg_overrides': 'DWGOverrides',
+            'apply_colors': 'ApplyColors',
+            'material_mapping': 'MaterialMapping',
+            'apply_materials': 'ApplyMaterials',
+            'create_scopes': 'CreateScopes',
+            'reset_scope': 'ResetScope',
+            'clash_viewer': 'ClashViewer',
+            
+            // Core
+            'sync_settings': 'SyncSettings',
+            'sync_log': 'SyncLog',
+            'user_workset': 'UserWorkset',
+            'link_worksets': 'LinkWorksets',
+            'setup_wizard': 'SetupWizard',
+            'tab_color_settings': 'TabColorSettings',
+            'toggle_colors': 'ToggleColors',
+            'batch_export': 'BatchExport',
+            'match_properties': 'MatchProperties',
+            'increase_cut_plane': 'CutPlaneUp',
+            'decrease_cut_plane': 'CutPlaneDown',
+            'category_visibility': 'CategoryVisibility'
+        };
+
+        function createIconSVG(iconId, color) {
+            const icon = customIcons.find(i => i.id === iconId);
+            if (!icon) return null;
+
+            return `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+                <g style="color: ${color}">
+                    ${icon.path}
+                </g>
+            </svg>`;
+        }
+
+        // Data
+        const REGIONS = {
+            scan: {
+                id: 'scan',
+                name: 'EliteScan',
+                label: 'ELITE SCAN',
+                color: '#5ED5DD',
+                colorVar: 'var(--scan)',
+                released: true,
+                version: 'v2.4.1',
+                downloadUrl: 'https://github.com/EliteCad-Designs/EliteCad-Designs.github.io/releases/download/EliteScan-latest/EliteScan-v2.4.1.zip',
+                downloadFile: 'EliteScan-v2.4.1.zip',
+                docsUrl: 'docs/EliteScan-Tutorial.html',
+                description: 'Point cloud deviation analysis for Autodesk Revit.',
+                installation: [
+                    'Download the ZIP file.',
+                    'Extract the ZIP.',
+                    'Double-click <strong>Install.bat</strong>.',
+                    'Select which Revit version(s) to install.',
+                    'Restart Revit.'
+                ],
+                addinRequirements: [
+                    'WebView2 runtime (installed automatically by the installer)',
+                    '.NET 8 Desktop Runtime (x64)',
+                    'EliteScan Converter &mdash; builds the render cache from your scan (installed automatically by EliteTools Updater)'
+                ],
+                panels: [
+                    {
+                        title: 'Analysis',
+                        tools: [
+                            { id: 'run_analysis', label: 'Analyze View', icon: 'play', fn: 'Scores every model element in your active view (or your current selection) against the point cloud and grades each one A-F by how closely the as-built matches the design. Runs on a built-in multi-core engine, so there is no scan picking and no external tools.', videoRef: '', changelog: 'v2.1.0: After analyzing, you can switch on a deviation heatmap in Render Settings to color the point cloud by how far each point sits from the model. v2.0.0: Analysis is now element-based and runs on whatever is in your active view or selection. It compares each element directly against the point cloud using a built-in multi-core engine, so CloudCompare and the old one-time per-scan E57 setup are no longer needed. Each point cloud is treated as a scan source, so the multi-scan results view still works.', requirements: ['A point cloud render cache built by the EliteScan Converter', 'A model view active (3D, plan, section, or elevation)', 'Elements of the included categories visible in the view'] },
+                            { id: 'view_report', label: 'View Report', icon: 'file-text', fn: 'Opens the interactive results window showing which elements passed or failed quality checks. Drill down by discipline, category, or element to investigate deviations.', videoRef: '', changelog: 'v2.0.2: Combine Analyses no longer loses elements when reports share a point cloud &mdash; every element is kept and the newest capture wins; elements deleted from the model are skipped and counted in the completion message. Closing the window with the title-bar X now cleans up properly. v2.0.0: Opens results produced by the new Analyze View command, in the same window with the same review and reporting tools. v1.3.0: New "Combine Analyses" button merges two or more saved section analyses into one consolidated report. Approvals now persist per project and survive re-analysis on new scans.', requirements: ['A saved analysis for the project, or results from an Analyze View run this session'] },
+                            { id: 'show_overlay', label: 'Show Overlay', icon: 'layers', fn: 'Color-code elements in the active view by their accuracy grade (green = excellent, red = failed). Quickly spot problem areas without opening the full report.', videoRef: '', changelog: 'v2.3.0: Moved into the Analysis panel (the separate Overlay panel is gone). v2.0.0: Reads results from the new Analyze View command. v1.3.0: Overlay now reflects per-project saved approvals &mdash; verified elements show in cyan and keep their reviewed state across re-analysis.', requirements: ['Analysis results (current session or saved)', 'Active view open'] },
+                            { id: 'clear_overlay', label: 'Clear Overlay', icon: 'eye-off', fn: 'Remove color-coded deviation overlays from the current view to restore normal element appearance.', videoRef: '', changelog: 'v2.3.0: Moved into the Analysis panel (the separate Overlay panel is gone).', requirements: ['Active view with overlay applied'] },
+                            { id: 'settings', label: 'Settings', icon: 'settings', fn: 'Configure analysis tolerance (how close is close enough), grading thresholds, and which element categories to include in quality checks. Also manages exclusion filters and saved analysis templates.', videoRef: '', changelog: 'v2.0.0: Removed the CloudCompare path and the per-scan E57 calibration section, which are no longer used. Point-cloud display (density, point size, color) now lives in the separate Render Settings panel.', requirements: [] },
+                        ]
+                    },
+                    {
+                        title: 'Viewer',
+                        tools: [
+                            { id: '360_viewer', label: '360 Viewer', icon: 'globe', fn: 'View scan locations as interactive 360° panoramas with hotspot navigation between nearby scans. Sync the panorama view direction with Revit\'s 3D view for spatial context.', videoRef: '-glwNk8CL8c', changelog: 'v2.0.0: Panorama images and their orientation now come straight from the ReCap point cloud and are created the first time you open a scan, so there is no separate E57 export or mode setting. v1.2.9: Improved panorama pole rendering for a cleaner seam.', requirements: ['Scan locations placed (or pick one from the scan list)', 'Point cloud loaded so panoramas can be read from it', 'WebView2 runtime'] },
+                        ]
+                    },
+                    {
+                        title: 'Point Clouds',
+                        tools: [
+                            { id: 'point_clouds', label: 'Manage', icon: 'sliders-horizontal', fn: 'Opens the Point Clouds window &mdash; one place to manage every point cloud and control how it draws. Each cloud row has its own controls: a visibility checkbox, Hide/Show in view, Build cache, Place scans, reload, Remove, and a per-cloud Color section (true RGB, elevation, a single uniform color, scanner intensity, or normal shading). Global dials cover point density, point size, and display style (normal or see-through X-ray), and a deviation heatmap can color points by their distance to the model after an analysis. Changes apply instantly.', videoRef: '', changelog: 'v2.4.1: Fixed point clouds disappearing after Sync with Central in workshared models &mdash; the cloud now stays visible through every sync with no reload needed. v2.4.0: The Scan Location family now ships with EliteScan &mdash; if it isn\'t loaded in your project, Place scans offers to load it for you with one click, so there is no family file to hunt down first. v2.3.0: The ribbon button is now named Manage with a fresh icon. Elevation coloring gained per-cloud ramp presets (Blue to Red, Grayscale, Viridis, Heat) and a choice for points outside the Min/Max range &mdash; clamp to the end colors, draw gray, or hide them. New Normals (color) mode paints every point by which way its surface faces, so floors, ceilings, and each wall direction get their own consistent color &mdash; great for spotting orientation and modeling errors (needs a current cache, like Intensity and Normal shading). The deviation heatmap gained ramp choices (Green-Yellow-Red, Blue-Yellow-Red, Grayscale) and a Hide unscored points option, with the legend following the selected ramp. Fixed point clouds disappearing in plans and sections under the Normal point style, fixed a background-converted cloud staying blank in 2D views until re-added, and fixed Remove failing silently on some background-converted clouds. v2.2.0: New. The Cloud Panel and Render Settings merged into this single window &mdash; every cloud row carries its own actions and color settings, so there is no separate settings window and nothing to select first. Color mode, elevation range, and uniform color are now saved per cloud per project, so settings no longer bleed between clouds or projects. The elevation color range can be entered as offsets from a Revit level (for example Level 2 + 0 ft to + 12 ft) instead of absolute elevations. The uniform color mode gained a proper color picker with a preview swatch. New Check all / Uncheck all buttons show or hide every cloud at once. Fixed only an arbitrary one of several loaded clouds drawing in some views &mdash; all clouds now render. Fixed the first click in an unfocused window not registering. v2.1.1: Fixed point clouds not showing in reflected ceiling plans unless View Depth was set to Unlimited. Scan-location placement moved from the ribbon Place Scans button to a per-cloud Place scans button on each cloud row, so projects with several clouds place markers for the right cloud. v2.1.0: New see-through X-ray display style; new color modes for a single uniform color, scanner intensity, and normal shading; and a deviation heatmap that colors points by their distance to the model after running Analyze View. Rebuilding a cloud\'s cache also records the scanner intensity and surface-normal data those modes need. v2.0.2: Build cache always asks before starting and shows a size and time estimate. Removing a cloud is more reliable, and closing a document now fully releases its clouds. v2.0.1: Adding a cloud converts in the background inside Revit &mdash; a preview appears immediately and swaps to the full renderer when conversion finishes, with a live progress bar and a time estimate up front. Fixed very large point clouds going blank at high density settings. Clouds inserted with Revit\'s own Insert > Point Cloud appear in the list so they can be converted or removed. v2.0.0: New as the separate Cloud Panel and Render Settings &mdash; a central place to manage project point clouds and tune display without reloading.', requirements: ['A Revit document open', 'EliteScan Converter installed (for building render caches)', 'For Place scans: levels defined in the model (the Scan Location family ships with EliteScan and loads on demand)'] },
+                            { id: 'revit_2_recap', label: 'Revit 2 ReCap', icon: 'share', fn: 'Extract point cloud transform data (position and rotation) for ReCap alignment. Displays coordinates and angles needed to align scans with your Revit model.', videoRef: '', changelog: 'v1.2.8: Added copy buttons to each value cell so you can copy X, Y, Z, or Rotation individually and paste directly into ReCap.', requirements: ['Point cloud instance linked in model'] },
+                            { id: 'cloud_reset', label: 'Cloud Reset', icon: 'refresh-cw', fn: 'Reset a selected point cloud\'s position and rotation back to origin. Useful for re-aligning scans after moving them in Revit.', videoRef: '', changelog: '', requirements: ['Point cloud instance to select when prompted'] },
+                            { id: 'isolate_element', label: 'Isolate to Element', icon: 'focus', fn: 'Clips the displayed point cloud to just the selected element(s), padded by the analysis window, so you see only the points around what you are checking.', videoRef: '', changelog: 'v2.1.0: Isolation no longer stays active after you close its project, so it can\'t blank the clouds in another project you open next. v2.0.0: New. Focus the rendered cloud on one element\'s region.', requirements: ['One or more elements selected', 'A point cloud loaded'] },
+                            { id: 'clear_isolation', label: 'Clear Isolation', icon: 'maximize', fn: 'Removes the region clip set by Isolate to Element and shows the full point cloud again.', videoRef: '', changelog: '', requirements: ['A point cloud with an active isolation'] },
+                        ]
+                    }
+                ]
+            },
+            draft: {
+                id: 'draft',
+                name: 'EliteDraft',
+                label: 'ELITE DRAFT',
+                color: '#F5B878',
+                colorVar: 'var(--draft)',
+                released: true,
+                version: 'v1.1.3',
+                downloadUrl: 'https://github.com/EliteCad-Designs/EliteCad-Designs.github.io/releases/download/EliteDraft-latest/EliteDraft-v1.1.3.zip',
+                downloadFile: 'EliteDraft-v1.1.3.zip',
+                docsUrl: 'docs/EliteDraft-Tutorial.html',
+                changelog: 'EliteDraft v1.1.3 Number Duct: New ribbon icon — the button no longer shares the Renumber icon.\nEliteDraft v1.1.3 Select Annotations: New ribbon icon — the button no longer shares the Isolate Service icon.\nEliteDraft v1.1.3 Isolate w/ Annotations: New ribbon icon — the button no longer shares the Isolate Service icon.\nEliteDraft v1.1.2 Hanger Settings: Palette Assignments now shows a tab for each loaded fabrication service, so same-named palettes in different services (e.g. butt weld gas vs. butt weld water) can be assigned different spacing templates. Existing assignments carry over automatically.\nEliteDraft v1.1.2 Duct Hangers: Fixed clash detection rejecting nearly every hanger position when other ductwork or piping runs parallel overhead. The check now only covers the space the rod actually occupies, and positions near joints no longer falsely clash with the neighboring piece of the same run.\nEliteDraft v1.1.2 Single Pipes: Same clash detection fixes applied to pipe hanger placement.\nEliteDraft v1.1.1 Batch Spools: Fixed sheet generation placing viewports far outside their layout zones with wildly wrong view scales. Views are now fitted to the assembly before placement, so viewports land in their zones at the sizes and scales shown in the sheet layout preview.\nEliteDraft v1.1.0 Blueprints: The Blueprints and Save Blueprint buttons now have proper ribbon icons (previously blank), so the Blueprint tools are easy to spot on the ribbon.\nEliteDraft v1.1.0 Modeling: Refreshed the ribbon icons for Move Connect, Mo-Co Align, and Match Fab.\nEliteDraft v1.0.22 Blueprints: New tool — save any selection of fabrication parts as a reusable template and place it back into any project from a dockable side pane. Single-click a blueprint to place it; organize blueprints into categories, search by name, and right-click to rename, move between categories, edit the description, or delete.\nEliteDraft v1.0.22 Blueprints: Capture and place branch runs that tap onto a main with Connect as Tap (including square-to-round "HETO" takeoffs). The whole branch drops flush on the duct you pick — connected together and rotatable face to face — and you finish the takeoff with Revit\'s native Connect as Tap so it lands exactly where you want.\nEliteDraft v1.0.21 Transition: Fixed offset transitions tagging as O/C when the duct kept the same size in and out but shifted up or down. Now correctly reports BU or BD with the offset distance.\nEliteDraft v1.0.20 General: Pinned shared dependencies to prevent rare "External Tool Failure" startup errors when multiple Elite add-ins are installed at once. No new tools or feature changes.\nEliteDraft v1.0.19 Duct Tag Settings: Added Tap as a 5th fitting type for tagging boot taps.\nEliteDraft v1.0.19 Quick Tag: Taps checkbox added to fitting type filter. Fixed error when opening settings then tagging.\nEliteDraft v1.0.19 Spool Manager: Configuration preset save/load/delete. Sheet Status parameter. Spool Note persists with presets. Fixed canvas clipping.\nEliteDraft v1.0.18 General: Updated shared logging to prevent log entries from leaking into other add-in log files.\nEliteDraft v1.0.17 General: Improved shutdown cleanup to prevent stale cached data between Revit sessions.\nEliteDraft v1.0.15 All Tools: Updated shared infrastructure to fix a startup crash on Revit 2022 and 2023.\nEliteDraft v1.0.14 All Hanger Tools: Added detailed diagnostic logging to all placement commands — log files now capture the full decision chain (selection, grouping, spacing, button resolution) for troubleshooting.\nEliteDraft v1.0.14 Pipe Rack: Fixed crash on Revit 2024 when placing trapeze hangers ("Value does not fall within the expected range").\nEliteDraft v1.0.14 Pipe Rack: Fixed trapeze button not found when hanger buttons are in non-standard palettes (e.g., "Supports" instead of "Hangers").\nEliteDraft v1.0.13 Hanger Settings: New palette-to-template mapping system — assign spacing templates to fabrication palettes for reliable material-based hanger spacing.\nEliteDraft v1.0.13 Single Pipes: Fixed material detection returning abbreviations instead of full names, causing all pipes to fall back to default 8 ft spacing.\nEliteDraft v1.0.13 Single Pipes: Hanger button now found by fuzzy name matching when the exact button name doesn\'t exist in a service.\nEliteDraft v1.0.13 Pipe Rack: Same material detection and spacing fixes as Single Pipes.\nEliteDraft v1.0.13 Duct Hangers: Hanger button now found by fuzzy name matching across services.\nEliteDraft v1.0.12 All Tools: Ribbon icons now automatically match the Revit UI theme (light/dark).',
+                description: 'MEP fabrication drafting tools for Autodesk Revit.',
+                installation: [
+                    'Download the ZIP file.',
+                    'Extract the ZIP.',
+                    'Double-click <strong>Install.bat</strong>.',
+                    'Select which Revit version(s) to install.',
+                    'Restart Revit.'
+                ],
+                addinRequirements: [],
+                panels: [
+                    {
+                        title: 'Hangers',
+                        tools: [
+                            { id: 'hanger_settings', label: 'Hanger Settings', icon: 'wrench', fn: 'Configure rod sizes, spacing rules, and support families before placing hangers. Set defaults once, apply to all projects.', videoRef: '', changelog: 'v1.1.2: Palette Assignments now shows a tab for each loaded fabrication service, so same-named palettes in different services (e.g. butt weld gas vs. butt weld water) can be assigned different spacing templates. Existing assignments carry over automatically. v1.0.14: Log files now capture full diagnostic details for all hanger placement commands, making it easier to troubleshoot "0 hangers placed" issues. v1.0.13: New tabbed layout with Placement and Spacing Templates tabs. New Palette Assignments section lets you map fabrication palettes to spacing templates for reliable material-based spacing. v1.0.12: Ribbon icons now automatically match the Revit UI theme (light/dark). v1.0.7: Added "Enable automatic clash detection" checkbox (off by default). When disabled, hangers are placed at ideal spacing without clash checks, significantly improving placement speed.', requirements: [] },
+                            { id: 'single_pipes', label: 'Single Pipes', icon: 'anchor', fn: 'Automatically space individual pipe hangers based on code requirements and pipe size. Works on selected pipes or entire view.', videoRef: '', changelog: 'v1.1.2: Fixed clash detection rejecting hanger positions when other ductwork or piping runs parallel overhead — the check now only covers the space the rod actually occupies, from the top of the pipe to the structure above. Positions near joints no longer falsely clash with the neighboring piece of the same run. v1.0.14: Added diagnostic logging — log files now show the full resolution chain (material, spacing tier, button match, positions) for each pipe. v1.0.13: Fixed material detection returning abbreviations (e.g., "CU") instead of full names ("Copper"), which caused all pipes to use default 8 ft spacing instead of the correct material-based spacing. Hanger spacing now resolves through palette-to-template mappings when configured. Hanger button is now found by fuzzy name matching when the exact button doesn\'t exist in a service. v1.0.8: Fixed hangers clustering near pipe ends when "Place at pipe ends" is enabled. Hangers are now evenly distributed along the pipe instead of bunching up at the end. v1.0.7: Fixed hangers being placed off-center on pipes slightly longer than one max span. Improved placement speed by removing unnecessary structural lookups during placement.', requirements: ['Fabrication pipes in model (straight, horizontal)', 'Hanger service button configured in Hanger Settings', 'Structural elements above pipes for attachment', 'A 3D view in project (for ray-casting)'] },
+                            { id: 'pipe_rack', label: 'Pipe Rack', icon: 'grip-horizontal', fn: 'Create shared trapeze supports for grouped parallel pipes. Automatically detects runs that should hang together to save labor and material.', videoRef: '', changelog: 'v1.0.14: Fixed crash on Revit 2024 when placing trapeze hangers. Fixed trapeze button not found when hanger buttons are in non-standard palettes (e.g., "Supports"). Added diagnostic logging for grouping, station planning, and button resolution. v1.0.13: Fixed material detection and spacing resolution — same fixes as Single Pipes. Pipe rack spacing now correctly uses palette-to-template mappings and material-based rules. v1.0.7: Fixed hangers being placed too close together when "Place at pipe ends" was unchecked. Pipes within one max span now get a single centered hanger instead of two at the edges. Pipes in the same rack no longer trigger false clash detections against each other.', requirements: ['Fabrication pipes in model (straight, horizontal)', 'Parallel pipes at same elevation', 'Trapeze hanger button configured in Hanger Settings', 'Structural elements above pipes for attachment', 'A 3D view in project (for ray-casting)'] },
+                            { id: 'duct_hangers', label: 'Duct Hangers', icon: 'container', fn: 'Place hangers on straight duct runs with proper spacing per SMACNA. Handles both rectangular and round duct, individual or trapeze styles.', videoRef: '', changelog: 'v1.1.2: Fixed clash detection rejecting nearly every hanger position when other ductwork or piping runs parallel overhead — the check now only covers the space the rod actually occupies, from the top of the duct to the structure above. Positions near joints no longer falsely clash with the neighboring piece of the same run. v1.0.14: Added diagnostic logging for run grouping, SMACNA spacing, and station placement. v1.0.13: Hanger button is now found by fuzzy name matching when the exact button doesn\'t exist in a service. v1.0.10: Transitions and open ends no longer force a 2 ft hanger offset — only elbows and branches require SMACNA clearances. Hangers on runs without fitting constraints are now evenly spaced across the full run. v1.0.9: Duct hangers now follow SMACNA 5.1.1 — hangers placed within 2 ft of elbows and 4 ft of branch taps. Fixed hangers landing on boot taps by detecting tap interference across duct segment junctions. Short runs now get properly offset hangers instead of a single midpoint hanger that could violate fitting clearances. Round duct spacing updated to 12 ft per SMACNA Table 5-2.', requirements: ['Fabrication ducts in model (straight, horizontal)', 'Duct hanger button configured in Hanger Settings', 'Structural elements above ducts for attachment', 'A 3D view in project (for ray-casting)'] },
+                            { id: 'rack_adjustment', label: 'Rack Adjustment', icon: 'sliders-horizontal', fn: 'Realign existing trapeze hangers to match current pipe positions. Fixes width and elevation when pipes shift during coordination.', videoRef: '', changelog: '', requirements: ['Fabrication hangers selected (trapeze style)', 'Fabrication pipes selected'] },
+
+                            { id: 'fill_info', label: 'Fill Info', icon: 'pencil', fn: 'Populate hanger family parameters with calculated values: rod lengths, elevation offsets, and sizes. Eliminates manual parameter entry for shop drawings.', videoRef: '', changelog: '', requirements: ['Fabrication hangers in model', 'Param: Hanger - Elevation Offset', 'Param: Hanger - Rod Length', 'Param: Hanger - Rod Length #2', 'Param: Hanger - Total Length', 'Param: Hanger - Unistrut Length', 'Param: Hanger - Free Size'] },
+                        ]
+                    },
+                    {
+                        title: 'Annotation',
+                        tools: [
+                            { id: 'quick_tag', label: 'Quick Tag', icon: 'tag', fn: 'Tag duct fittings with intelligent positioning based on fitting type. Configure once per fitting style, then batch-tag entire views.', videoRef: '', changelog: 'v1.0.19: Added Taps checkbox to fitting type filter. Fixed error when opening Tag Settings and then trying to tag.', requirements: ['Fabrication duct fittings in view', 'Tag Settings configured with tag families', 'Tag families loaded in project', 'Active view supports tagging (not 3D/schedule)'] },
+                            { id: 'tag_settings', label: 'Tag Settings', icon: 'settings-2', fn: 'Control where tags appear on straights, elbows, transitions, and taps using a 3x3 grid system. Set offsets and tag families per fitting type.', videoRef: '', changelog: 'v1.0.19: Added Tap as a 5th fitting type. Boot taps can now be tagged with the same grid system as other fittings. Tags automatically detect which side the angled portion is on for mirrored taps.', requirements: [] },
+                            { id: 'elbow_extension', label: 'Elbow Extension', icon: 'corner-down-right', fn: 'Extract centerline-to-end dimensions from elbows and write to shared parameters for detailing. Shows takeoff lengths needed for fabrication.', videoRef: '', changelog: '', requirements: ['Fabrication duct fittings in view', 'Param: SM - Top Extension', 'Param: SM - Bottom Extension', 'Param: SM - Elbow Radius'] },
+                            { id: 'transition', label: 'Transition', icon: 'filter', fn: 'Calculate and tag offset/set values for duct transitions. Automatically determines flat-top, flat-bottom, or bottom-up/down dimensions for fab notes.', videoRef: '', changelog: 'v1.0.21: Fixed offset transitions tagging as O/C when the duct kept the same size in and out but shifted up or down. Now correctly reports BU or BD with the offset distance.', requirements: ['Fabrication duct fittings in view', 'Fitting Description: Transition, Radius Offset, Mitred Offset, or Square to Round', 'Param: SM - OFFSET (text)', 'Param: SM - SET (text)', 'Param: SM - CALC TRANSITION LENGTH (number)'] },
+                            { id: 'batch_spools', label: 'Batch Spools', icon: 'list-ordered', fn: 'Generate complete spool sheet packages with ISO, plan, elevation views, and bill of materials. Creates fabrication-ready drawings from assemblies.', videoRef: '', changelog: 'v1.1.1: Fixed viewports landing far outside their layout zones with wrong view scales. Views are now fitted to the assembly before placement, so sheets match the layout preview.\nv1.0.19: Configuration preset save/load/delete with named presets. Added Sheet Status parameter (FOR REVIEW, FOR APPROVAL, etc.). Spool Note now persists with presets. Fixed canvas clipping zones at title block bounds.\nv1.0.11: Redesigned as Spool Manager with 3-column dashboard layout. Added interactive sheet layout editor with zoomable canvas and pan support. Views now auto-scale based on sheet layout zone sizes. New template preset system to save, load, and delete named spool configurations. Tag family is now configurable instead of hardcoded. Smart 3D tag placement with collision avoidance.', requirements: ['Assemblies (spools) selected', 'View template: "ECD - SPOOL"', 'Title block: "ECD - Spool-11x17"', 'Tag family: "Item Number"', 'Param on parts: Spool - Description', 'Params on sheet: Spool - Weight, Spool - Weld Inches'] },
+                            { id: 'renumber', label: 'Renumber', icon: 'hash', fn: 'Renumber spool item tags after changes. Groups identical parts under the same number and recalculates weight/weld totals for the BOM.', videoRef: '', changelog: '', requirements: ['Assemblies (spools) selected', 'Param on parts: Spool - Description', 'Params on sheet: Spool - Weight, Spool - Weld Inches'] },
+                            { id: 'number_duct', label: 'Number Duct', icon: 'waypoints', fn: 'Assign project-wide sequential numbers to fabrication ductwork by walking the connected run, so numbers follow the actual flow of the system.', videoRef: '', changelog: 'v1.1.3: New ribbon icon — no longer shares the Renumber icon.', requirements: ['Fabrication ductwork in the model'] },
+                        ]
+                    },
+                    {
+                        title: 'View',
+                        tools: [
+                            { id: 'isolate_service', label: 'Isolate Service', icon: 'eye', fn: 'Show only the selected system in the current view. Quickly focus on hot water, chilled water, or any service without manual filters.', videoRef: '', changelog: '', requirements: ['Fabrication parts in active view', 'Select or pick a fabrication part to identify the service'] },
+                            { id: 'hide_service', label: 'Hide Service', icon: 'eye-off', fn: 'Hide the selected system in the current view. Clean up spool drawings by removing interfering systems outside the fabrication scope.', videoRef: '', changelog: '', requirements: ['Fabrication parts in active view', 'Pick a fabrication part to identify the service to hide'] },
+                            { id: 'select_annotations', label: 'Select Annotations', icon: 'mouse-pointer-click', fn: 'Add the tags, dimensions, and spot elevations that annotate the selected elements to your selection — so you can move, copy, or delete parts together with their annotations.', videoRef: '', changelog: 'v1.1.3: New ribbon icon — no longer shares the Isolate Service icon.', requirements: ['Model elements selected', 'Tags, dimensions, or spot elevations in the view'] },
+                            { id: 'isolate_with_annotations', label: 'Isolate w/ Annotations', icon: 'focus', fn: 'Temporarily isolate the selected elements together with their annotations, so tags and dimensions stay visible while everything else is hidden.', videoRef: '', changelog: 'v1.1.3: New ribbon icon — no longer shares the Isolate Service icon.', requirements: ['Model elements selected'] },
+                        ]
+                    },
+                    {
+                        title: 'Modeling',
+                        tools: [
+                            { id: 'move_connect', label: 'Move Connect', icon: 'link-2', fn: 'Move an element so its nearest aligned connector snaps to another element\'s connector. Auto-detects whether you are connecting fabrication or standard MEP parts.', videoRef: '', changelog: 'v1.1.0: Refreshed ribbon icon.', requirements: ['Two elements with connectors (fabrication or MEP)'] },
+                            { id: 'moco_align', label: 'Mo-Co Align', icon: 'git-merge', fn: 'Move and rotate an element to align and connect to another at any angle — not just parallel runs.', videoRef: '', changelog: 'v1.1.0: Refreshed ribbon icon.', requirements: ['Two elements with connectors (fabrication or MEP)'] },
+                            { id: 'match_fab', label: 'Match Fab', icon: 'copy', fn: 'Copy fabrication dimensions and connector body/lock settings from one picked part to other selected parts that share the same fabrication button.', videoRef: '', changelog: 'v1.1.0: Refreshed ribbon icon.', requirements: ['A source fabrication part to pick', 'Target fabrication parts selected that share the same fab button'] },
+                        ]
+                    },
+                    {
+                        title: 'Blueprint',
+                        tools: [
+                            { id: 'save_blueprint', label: 'Save Blueprint', icon: 'save', fn: 'Capture the selected fabrication parts as a reusable blueprint — saved per project with a name, category, and optional description.', videoRef: '', changelog: 'v1.1.0: Added a ribbon icon (was previously blank). v1.0.22: New tool — capture any selection of fabrication parts as a reusable blueprint.', requirements: ['Fabrication parts selected'] },
+                            { id: 'blueprints', label: 'Blueprints', icon: 'library', fn: 'Open the Blueprints side pane. Single-click a saved blueprint to place it in the active view; right-click to rename, re-categorize, edit its description, or delete.', videoRef: '', changelog: 'v1.1.0: Added a ribbon icon (was previously blank). v1.0.22: New tool — dockable pane to browse and place saved blueprints; supports categories, name search, and right-click edit/delete.', requirements: ['Blueprints saved in the current project'] },
+                        ]
+                    }
+                ]
+            },
+            coord: {
+                id: 'coord',
+                name: 'EliteCoord',
+                label: 'ELITE COORD',
+                color: '#6EE7A8',
+                colorVar: 'var(--coord)',
+                released: true,
+                version: 'v1.0.20',
+                downloadUrl: 'https://github.com/EliteCad-Designs/EliteCad-Designs.github.io/releases/download/EliteCoord-latest/EliteCoord-v1.0.20.zip',
+                downloadFile: 'EliteCoord-v1.0.20.zip',
+                docsUrl: 'docs/EliteCoord-Tutorial.html',
+                description: 'BIM coordination tools for Autodesk Revit.',
+                installation: [
+                    'Download the ZIP file.',
+                    'Extract the ZIP.',
+                    'Double-click <strong>Install.bat</strong>.',
+                    'Select which Revit version(s) to install.',
+                    'Restart Revit.'
+                ],
+                addinRequirements: [],
+                panels: [
+                    {
+                        title: 'Prep',
+                        tools: [
+                            { id: 'dwg_overrides', label: 'DWG Overrides', icon: 'file-output', fn: 'Define color and visibility rules for imported CAD layers to maintain consistent drawing standards across your project.', videoRef: '', changelog: 'v1.0.19: New Preset dropdown lets you switch between saved override configurations in one click, and a Save Preset button stores the current rules under a name of your choice. Existing saved configuration files are organized into a presets folder automatically. v1.0.4: Ribbon icons now automatically match the Revit UI theme (light/dark).', requirements: [] },
+                            { id: 'apply_colors', label: 'Apply Colors', icon: 'paintbrush', fn: 'Instantly color-code imported CAD layers in your view based on saved rules, making it easy to distinguish systems.', videoRef: '', changelog: '', requirements: ['DWG imports in active view', 'DWG Overrides configured'] },
+                            { id: 'material_mapping', label: 'Material Mapping', icon: 'palette', fn: 'Assign colors to fabrication services that carry through to Navisworks, ensuring consistent clash detection visualization.', videoRef: '', changelog: 'v1.0.14: Fixed a startup-related crash that could appear when opening Material Mapping if other Elite add-ins were installed at mismatched dependency versions. Pinned shared dependencies so future releases can\'t drift apart.', requirements: ['Fabrication configuration loaded in Revit'] },
+                            { id: 'apply_materials', label: 'Apply Materials', icon: 'wand', fn: 'Automatically apply configured materials to fabrication parts based on service or filter rules for coordination model consistency.', videoRef: '', changelog: '', requirements: ['Fabrication parts in model', 'Material Mapping configured', 'Shared parameter file set in Revit', 'Param: Navis Material (auto-created if missing)'] },
+                            { id: 'replace_ceilings', label: 'Replace Ceilings', icon: 'layout-template', fn: 'Bulk-replace every Basic Ceiling instance in your project with a chosen ceiling type. Walks group ancestry and detail groups so nested ceilings get swapped too — one Ctrl+Z reverts the entire change.', videoRef: '', changelog: 'v1.0.16: New ribbon icon. | v1.0.14: New command. Single transaction with auto-accepted "elements will be deleted" warnings on dependent dimensions and references.', requirements: ['Project contains at least one Basic Ceiling instance', 'At least one non-Basic ceiling type loaded as the replacement target'] },
+                        ]
+                    },
+                    {
+                        title: 'Views',
+                        tools: [
+                            { id: 'create_scopes', label: 'Create Scopes', icon: 'box', fn: 'Generate level-specific 3D views with section boxes for streamlined coordination reviews and clash resolution.', videoRef: '', changelog: 'v1.0.16: Section boxes now land at the correct elevation on projects that use shared or survey coordinates -- previously the box could sit a full level too high and miss your geometry. The setup dialog also no longer errors when a linked model is left checked. | v1.0.13: Choose which levels define your section box boundaries, set a custom view prefix, pick a scope box for XY extents, and adjust Z offsets. Settings saved per project. | v1.0.8: Fixed \"Could not determine model extents\" error when working with Revit links only (no host model geometry). Section boxes now fit more accurately to linked model geometry at each level.', requirements: ['At least 2 levels defined in model', '3D view family type exists'] },
+                            { id: 'reset_scope', label: 'Reset Scope', icon: 'refresh-cw', fn: 'Quickly adjust your 3D view\'s section box to focus on specific levels, saving time during coordination.', videoRef: '', changelog: 'v1.0.16: Section boxes now land at the correct elevation on projects that use shared or survey coordinates -- previously the box could sit a full level too high. The setup dialog also no longer errors when a linked model is left checked. | v1.0.13: Z offsets are now configurable and shared with Create Scopes settings. | v1.0.10: New \"Only adjust Z\" option to update section box height while keeping your current XY extents. | v1.0.8: Fixed \"Could not determine model extents\" error when working with Revit links only (no host model geometry).', requirements: ['Active 3D view (non-perspective)', '0-2 levels selected (auto-detects upper bound)'] },
+                            { id: 'find_in_2d', label: 'Find in 2D', icon: 'search', fn: 'Select any element and find which Floor Plan and RCP views contain it. Quickly navigate between 3D and 2D views during coordination.', videoRef: '', changelog: 'v1.0.11: New command. Tabbed dialog showing Floor Plans and RCPs where the selected element is visible, with reference level fallback for investigation.', requirements: ['Element selected in any view'] },
+                        ]
+                    },
+                    {
+                        title: 'Measure',
+                        tools: [
+                            { id: 'measure', label: 'Measure', icon: 'ruler', fn: 'Measure the distance between two surfaces in a 3D view. Pick two points and read the X, Y, and Z differences plus the horizontal and straight-line distances in feet and inches. FACE mode measures to any face you click; SNAP mode snaps to edges, midpoints, and arc centers. Works on host and linked geometry.', videoRef: '', changelog: 'v1.0.16: New ribbon icon. | v1.0.15: New command.', requirements: ['Active 3D view'] },
+                        ]
+                    },
+                    {
+                        title: 'Sleeves',
+                        tools: [
+                            { id: 'wall_sleeve', label: 'Wall Sleeve', icon: 'circle-dot', fn: 'Place correctly-sized sleeves where selected pipe, duct, cable tray, conduit, or fabrication runs pierce walls (in the host model or in linked models). A size dialog lists each run size in your selection and lets you set the sleeve size to place for each one, remembered per project. Sleeves are stamped with the run\'s nominal size and service, and re-running refreshes existing sleeves in place instead of duplicating them.', videoRef: '', changelog: 'v1.0.20: Sleeve sizes now account for insulation - the size dialog and sizing rules use each run\'s overall size including insulation, so insulated pipes and ducts get sleeves big enough for what actually passes through the wall. Uninsulated runs and saved size table entries are unchanged. | v1.0.18: Sleeve family now loads in Revit 2022 and 2023 - it was previously saved in a newer Revit format those versions could not open. | v1.0.17: Fixed the installer missing the sleeve family file - sleeves now place without needing the family loaded into the project manually. | v1.0.16: New ribbon icon. | v1.0.15: New command.', requirements: ['Active 3D view', 'Pipe, duct, cable tray, conduit, or fabrication runs selected'] },
+                        ]
+                    },
+                    {
+                        title: 'Clash',
+                        tools: [
+                            { id: 'clash_viewer', label: 'Clash Viewer', icon: 'alert-triangle', fn: 'Import and visualize Navisworks clash results directly in Revit, tracking status and navigating to problem areas.', videoRef: '', changelog: 'v1.0.12: Locate 2D now places a clash marker at the clash point, matching the 3D locator. Added Clear button to reset clash data and release image file locks. Footer reorganized for narrower layout. | v1.0.11: Added Navisworks viewpoint matching -- Locate Clash now uses the camera angle, projection, and section box from EliteClashManager exports. New Locate 2D button jumps to clash location in your active floor plan. | v1.0.7: Fixed a potential crash on Revit shutdown by properly disposing internal resources.', requirements: ['Navisworks clash export XML file'] },
+                        ]
+                    }
+                ]
+            },
+            core: {
+                id: 'core',
+                name: 'EliteCore',
+                label: 'ELITE CORE',
+                color: '#A78BFA',
+                colorVar: 'var(--core)',
+                released: true,
+                version: 'v1.0.19',
+                downloadUrl: 'https://github.com/EliteCad-Designs/EliteCad-Designs.github.io/releases/download/EliteCore-latest/EliteCore-v1.0.19.zip',
+                downloadFile: 'EliteCore-v1.0.19.zip',
+                docsUrl: 'docs/EliteCore-Tutorial.html',
+                description: 'Project setup and shared utilities for Autodesk Revit.',
+                installation: [
+                    'Download the ZIP file.',
+                    'Extract the ZIP.',
+                    'Double-click <strong>Install.bat</strong>.',
+                    'Select which Revit version(s) to install.',
+                    'Restart Revit.'
+                ],
+                addinRequirements: [],
+                panels: [
+                    {
+                        title: 'Project Setup',
+                        tools: [
+                            { id: 'user_workset', label: 'User Workset', icon: 'user', fn: 'Create a personal workset named after you to keep your work organized and prevent accidental edits to others\' elements.', videoRef: '', changelog: 'v1.0.3: Ribbon icons now automatically match the Revit UI theme (light/dark).', requirements: ['Worksharing enabled in project'] },
+                            { id: 'link_worksets', label: 'Link Worksets', icon: 'link', fn: 'Organize linked models (RVT, CAD, point clouds) onto dedicated worksets for easier visibility control and model management.', videoRef: '', changelog: '', requirements: ['Worksharing enabled in project', 'Linked models, CAD files, or point clouds in project'] },
+                            { id: 'setup_wizard', label: 'Setup Wizard', icon: 'wand', fn: 'Scan your project for shared parameters required by Elite add-ins and fix any that are missing or misconfigured with one click. The wizard checks all 28 parameters across EliteCoord, EliteDraft, and EliteScan, showing a color-coded status for each one.', videoRef: '', changelog: 'v1.0.10: Fixed parameters being created with the wrong type when fixing mismatches. Tags and schedules now stay connected after the wizard adds or fixes parameters. Parameters are now placed in the correct property groups (Dimensions, Identity Data) instead of all going to Data. v1.0.4: New dedicated ribbon icon. Window maximize no longer covers the taskbar.', requirements: ['Active Revit project open'] },
+                        ]
+                    },
+                    {
+                        title: 'Auto Sync',
+                        tools: [
+                            { id: 'sync_settings', label: 'AutoSync Settings', icon: 'settings', fn: 'Configure automatic synchronization intervals, notification preferences, and sync behavior. Set how often your model syncs to central and control what happens during each sync cycle.', videoRef: '', changelog: 'v1.0.11: Fixed log entries leaking into other add-in log files when running commands from EliteCoord or EliteDraft. v1.0.7: Fixed a bug where turning off auto-sync in settings could be overridden by stale per-project settings. Auto-sync is now off by default. Failed syncs now wait 5 minutes before retrying. Added diagnostic logging for troubleshooting. v1.0.5: Fixed errors when linked documents are loaded in the project. v1.0.2: Added Auto-Sync feature with interval sync, idle sync, and sync-on-save modes. Configurable relinquish options and pre-close reminders. Sync timer now starts fresh from document open to prevent immediate sync. Removed separate Sync Now button.', requirements: ['Worksharing enabled in project', 'Central model accessible on network or BIM 360/ACC'] },
+                            { id: 'sync_log', label: 'Sync Log', icon: 'clock', fn: 'View a timestamped history of all automatic and manual sync operations. Track sync durations, conflicts encountered, and elements borrowed or relinquished during each cycle.', videoRef: '', changelog: 'v1.0.9: Fixed button alignment in the window header. v1.0.2: New feature — tracks all sync operations with timestamps, sync type (interval, idle, manual, on-save), duration, and success/failure status.', requirements: ['Worksharing enabled in project', 'At least one sync operation completed'] },
+                        ]
+                    },
+                    {
+                        title: 'Tab Colors',
+                        tools: [
+                            { id: 'tab_color_settings', label: 'Tab Color Settings', icon: 'palette', fn: 'Customize how your open document tabs are color-coded in Revit. Assign colors from a palette to help visually distinguish between multiple open projects and family editors at a glance.', videoRef: '', changelog: 'v1.0.16: Fixed the color swatch popup closing immediately, before you could actually pick a color. Fixed a bug where saving tab-coloring settings would scramble and reshuffle every open document\'s assigned color. v1.0.13: Tab coloring is now off by default on first install — enable it in settings. v1.0.11: Fixed log entries leaking into other add-in log files when running commands from EliteCoord or EliteDraft. v1.0.9: Fixed a crash that caused Revit to close unexpectedly after several minutes with tab colors enabled. v1.0.8: Fixed a crash that could occur during zooming or view switching. Service now self-heals if Revit rebuilds its UI. v1.0.7: Improved stability — additional safety checks when coloring tabs during idle processing. v1.0.4: New dedicated ribbon icon.', requirements: [] },
+                            { id: 'toggle_colors', label: 'Toggle Colors', icon: 'toggle-left', fn: 'Quickly turn tab coloring on or off without opening the settings dialog.', videoRef: '', changelog: 'v1.0.16: Fixed the color swatch popup closing immediately, before you could actually pick a color. Fixed a bug where saving tab-coloring settings would scramble and reshuffle every open document\'s assigned color. v1.0.13: Tab coloring is now off by default on first install — enable it in settings. v1.0.11: Fixed log entries leaking into other add-in log files when running commands from EliteCoord or EliteDraft. v1.0.9: Fixed a crash that caused Revit to close unexpectedly after several minutes with tab colors enabled. v1.0.8: Fixed a crash that could occur during zooming or view switching. Service now self-heals if Revit rebuilds its UI. v1.0.7: Improved stability — additional safety checks when coloring tabs during idle processing. v1.0.4: New dedicated ribbon icon.', requirements: [] },
+                        ]
+                    },
+                    {
+                        title: 'Sheets',
+                        tools: [
+                            { id: 'elite_sheets', label: 'Elite Sheets', icon: 'layout', fn: 'Manage sheets, views, and revisions in one window. Browse and edit sheet numbers and names, add custom parameter columns, rename views with find/replace or token-based naming, preview viewport layouts, duplicate sheets with viewports, and assign linked view backgrounds (Revit 2024+).', videoRef: '', changelog: 'v1.0.14: Revisions tab is now additive — the revision column shows a checkbox list of every project revision with the sheet\'s current revisions pre-checked. Toggling a checkbox while multiple sheets are highlighted adds or removes just that one revision across all highlighted sheets, preserving their other assigned revisions. Current Rev column now shows the per-sheet revision number that prints on the titleblock, instead of duplicating the project-wide sequence number. v1.0.12: New command. Tabbed manager with Views, Sheets, Revisions, and Backgrounds tabs. Fast bulk loading, dark-themed popout dialogs, layout preview, and token-based naming.', requirements: ['Active Revit project open'] },
+                        ]
+                    },
+                    {
+                        title: 'Export',
+                        tools: [
+                            { id: 'batch_export', label: 'Batch Export', icon: 'file-output', fn: 'Export multiple sheets and views to PDF, DWG, and NWC in a single operation. Choose your formats, configure settings for each, and set up custom file naming using project parameters and tokens. Save your configurations as reusable profiles that can be shared between machines.', videoRef: '', changelog: 'v1.0.12: Dark-themed input dialogs. v1.0.8: Select Set filter is now a checkbox dropdown — check multiple View/Sheet Sets to filter the list by their union. No sets checked shows all items. Stacks with view type filter and text search. v1.0.5: Fixed loading hang on projects with hundreds of sheets and views. v1.0.4: New feature — 3-step export wizard with PDF, DWG, and NWC support. Token-based file naming, reusable profiles, view type filtering, and View/Sheet Set management.', requirements: ['Active Revit project open', 'Sheets or views present in the project', 'DWG Export Setup configured in Revit (for DWG export)'] },
+                        ]
+                    },
+                    {
+                        title: 'Modify',
+                        tools: [
+                            { id: 'match_properties', label: 'Match Props', icon: 'paintbrush', fn: 'AutoCAD-style property copy for Revit. Select the elements you want to change first using Revit\'s own selection tools (window select, right-click > Select Connected, filters), run the command, then pick one element to copy from. A preview dialog shows exactly what will change — family type and instance parameters — before applying everything in a single undo step.', videoRef: '', changelog: 'v1.0.16: New command.', requirements: ['Active Revit project open', 'One or more target elements selected before running the command'] },
+                        ]
+                    },
+                    {
+                        title: 'View Tools',
+                        tools: [
+                            { id: 'increase_cut_plane', label: 'Increase Cut Plane', icon: 'arrow-up', fn: 'Raise the active plan view\'s cut plane by a step you set. Type the step (default 6") in the ribbon box next to the buttons and press Enter — it accepts any distance format that matches your project units (6", 1\'-6", 150 mm). Works in reflected ceiling plans too: the bottom clip moves with the cut plane so the view range stays valid. The step is remembered between sessions.', videoRef: '', changelog: 'v1.0.17: New command.', requirements: ['Active plan view (floor plan, ceiling plan, or structural plan)'] },
+                            { id: 'decrease_cut_plane', label: 'Decrease Cut Plane', icon: 'arrow-down', fn: 'Lower the active plan view\'s cut plane by the same step used by Increase Cut Plane. If a nudge would push the cut plane past the view\'s range, you get a message instead of a broken view.', videoRef: '', changelog: 'v1.0.17: New command.', requirements: ['Active plan view (floor plan, ceiling plan, or structural plan)'] },
+                            { id: 'category_visibility', label: 'Category Visibility', icon: 'eye', fn: 'One split button with six toggle commands that check or uncheck an entire Visibility/Graphics category group on the active view in one click: Model Categories, Annotation Categories, Imported Categories, Analytical Categories, Point Clouds, and Revit Links. Assign each toggle its own keyboard shortcut in Revit\'s Keyboard Shortcuts dialog for one-key show/hide. The last-used toggle stays on the button\'s top half for quick repeat clicks. The Revit Links toggle hides or shows every linked model at once — showing also restores links that were hidden individually.', videoRef: '', changelog: 'v1.0.18: New command.', requirements: ['Active view that supports Visibility/Graphics', 'View\'s V/G not controlled by a view template'] },
+                            { id: 'workset_config', label: 'Workset Config', icon: 'list-checks', fn: 'Opens a checklist of the project\'s user worksets. Check the ones you want the Toggle Worksets button to control — the selection is remembered per project, and worksets added later start unchecked.', videoRef: '', changelog: 'v1.0.19: New command.', requirements: ['Worksharing enabled in project'] },
+                            { id: 'toggle_worksets', label: 'Toggle Worksets', icon: 'eye-off', fn: 'Hides or shows all of your checked worksets in the active view with one click. If any of them are visible it hides them all; once they\'re all hidden, pressing again brings them all back. Assign it a keyboard shortcut in Revit\'s Keyboard Shortcuts dialog (search "Toggle Worksets") for one-key workset show/hide. If the view\'s template controls workset visibility, the command tells you which template.', videoRef: '', changelog: 'v1.0.19: New command.', requirements: ['Worksharing enabled in project', 'Worksets checked in Workset Config', 'Active graphical view (not a drafting view, legend, or sheet)'] },
+                        ]
+                    }
+                ]
+            },
+            clash: {
+                id: 'clash',
+                name: 'EliteClashManager',
+                label: 'CLASH MANAGER',
+                color: '#F87171',
+                colorVar: 'var(--clash)',
+                released: true,
+                version: 'v1.16.2',
+                downloadUrl: 'https://github.com/EliteCad-Designs/EliteCad-Designs.github.io/releases/download/EliteClashManager-latest/EliteClashManager-v1.16.2.zip',
+                downloadFile: 'EliteClashManager-v1.16.2.zip',
+                docsUrl: 'docs/EliteClashManager-User-Guide.html',
+                platformLabel: 'Navisworks Versions',
+                platformVersions: '2023 - 2026',
+                description: 'Advanced clash management, triage, and cloud issue publishing for Autodesk Navisworks Manage. Extends the native Clash Detective with automated grouping, room mapping, viewpoint generation, and one-click ACC / BIM 360 issue publishing with pushpins and screenshots.',
+                supportedVersions: '<strong>Supported Navisworks Versions:</strong> 2023, 2024, 2025, 2026 (Manage and Simulate)',
+                installation: [
+                    'Download the ZIP file.',
+                    'Extract the ZIP to <strong>%APPDATA%\\Autodesk\\ApplicationPlugins\\EliteClashManager.bundle\\</strong>.',
+                    'Restart Navisworks.',
+                    'Run the <strong>Setup Wizard</strong> from the EliteCADDesigns ribbon tab to connect your ACC account and project.'
+                ],
+                addinRequirements: [
+                    'Autodesk Navisworks Manage or Simulate 2023-2026',
+                    'For cloud publishing: an Autodesk Platform Services app (Client ID + Secret) and an ACC / BIM 360 account with Model Coordination'
+                ],
+                changelog: 'v1.16.2 Run Clash Tests window: Taller default size, resizable with a sensible minimum, and a resize sticks for the rest of the Navisworks session.\nv1.16.1 Sign In: The ribbon Sign In button now opens a proper credential dialog (editable Client ID / Secret, live status, Sign In / Sign Out) instead of blind-toggling login. New auth-status person icon in the Triage quick actions shows signed-in state at a glance.\nv1.16.1 Approved groups: Approved clash groups are now untouchable in every clash-routing path (absorb, distribute, auto issue) — new clashes form new groups instead of reopening approved work.\nv1.16.0 Structured comments: Issue numbers and room names now persist inside the saved NWF as structured comments, so they survive save/reopen and repopulate the Triage grid automatically.\nv1.16.0 Triage: New severity sort (deepest penetration first) and always-visible column filters (Name, Issue, Comment, Assigned To, Room).\nv1.15.8 ExternalLink issue tracking: Published issues render natively in the Clash Detective Related Info column with status colors, plus a manual Add Issue row action for linking existing cloud issues.',
+                panels: [
+                    {
+                        title: 'Manager',
+                        tools: [
+                            { id: 'open_manager', label: 'Open Manager', icon: 'layout-dashboard', fn: 'Opens the dockable Clash Manager panel — the main workspace. The Triage tab lists every clash group across your tests with issue status, assignee, room, and comments; from there you group, split, merge, and rename clashes, map rooms, prep viewpoints, and publish coordination issues to ACC. The Analysis tab holds Worst Offender rankings and slab penetration reports, and the Settings tab covers preferences and the Room Atlas.', videoRef: '', changelog: 'v1.16.1: Auth-status person icon added to the quick actions row. v1.16.0: Severity sort and always-visible column filters. v1.15.8: Issue links render in the Clash Detective Related Info column.', requirements: ['A Navisworks file open with Clash Detective tests'] },
+                            { id: 'setup_wizard', label: 'Setup Wizard', icon: 'list-checks', fn: 'Step-by-step first-time setup checklist: sign in to Autodesk Construction Cloud, create or select the active project, complete the project configuration (levels, filename pattern, trade mappings), and build the Room Atlas. Each step re-validates as you complete it, so you can see exactly what is left before the tool is ready to publish issues.', videoRef: '', changelog: 'v1.15.8: New command.', requirements: [] },
+                        ]
+                    },
+                    {
+                        title: 'Account',
+                        tools: [
+                            { id: 'sign_in', label: 'Sign In', icon: 'user-check', fn: 'Sign in or out of Autodesk Construction Cloud and edit the app credentials in one dialog: Client ID, masked Client Secret with Show/Hide, a live connection status dot, and Sign In / Sign Out buttons. Credentials save before login, so a corrected secret takes effect on the very next attempt. Sign-in failures show the actual error instead of failing silently.', videoRef: '', changelog: 'v1.16.1: New dialog — replaces the old login/logout toggle button.', requirements: ['An Autodesk Platform Services app (Client ID + Secret)'] },
+                        ]
+                    },
+                    {
+                        title: 'Project',
+                        tools: [
+                            { id: 'active_project', label: 'Active Project', icon: 'folder-cog', fn: 'Create, select, or switch the active EliteClashManager project. Each project stores its level definitions, filename pattern, and trade mappings (trade code to issue type, subtype, and assignee), and is auto-detected when you open a matching NWF. The Configure button opens the full project editor with tabs for General, Levels, and Filename & Correlations.', videoRef: '', changelog: 'v1.15.8: Duplicate-name guards on Select and Configure prevent silently overwriting an existing project. v1.15.7: New command — single entry point for all project configuration.', requirements: [] },
+                        ]
+                    },
+                    {
+                        title: 'Tools',
+                        tools: [
+                            { id: 'publish_levels', label: 'Publish Levels', icon: 'upload', fn: 'Export and publish NWDs grouped by level. Pick which levels to export and the tool produces one file per level from the federated model, keeping cloud connectivity intact — useful for issuing lighter per-floor coordination models to field teams.', videoRef: '', changelog: '', requirements: ['A federated NWF open', 'Project level definitions configured'] },
+                            { id: 'consolidate', label: 'Consolidate', icon: 'combine', fn: 'Clean up after appending NWF files: finds duplicate Clash Tests, Search Sets, and Saved Viewpoints created by the append and merges or removes them, so the combined model behaves like a single clean file.', videoRef: '', changelog: '', requirements: ['A Navisworks file with appended NWFs'] },
+                            { id: 'rewrite_tests', label: 'Rewrite Tests', icon: 'file-cog', fn: 'Overwrite the file\'s search sets from an imported Search Sets XML and re-path the clash tests that reference them. Lets you roll out an updated clash configuration (from the Clash Configuration Builder or another project) without rebuilding tests by hand — affected tests are listed before anything is changed.', videoRef: '', changelog: '', requirements: ['A Search Sets XML exported from Navisworks or the Clash Configuration Builder'] },
+                            { id: 'export_model_tree', label: 'Export Model Tree', icon: 'file-json', fn: 'Scans all loaded models and writes a JSON dump of the full property catalog — every element with its property categories, values, and data types, plus per-file layer names and an aggregated property index. This file feeds the standalone Clash Configuration Builder for building search sets and clash test matrices outside Navisworks.', videoRef: '', changelog: '', requirements: ['Models loaded in the current file'] },
+                        ]
+                    }
+                ]
+            }
+        };
+
+        // State
+        let activeRegion = 'scan';
+        let selectedTool = null;
+
+        // Elements
+        const app = document.querySelector('.app');
+        const tabs = document.querySelectorAll('.tab');
+        const ribbon = document.getElementById('ribbon');
+        const detailMain = document.getElementById('detail-main');
+        const breadcrumbRegion = document.getElementById('breadcrumb-region');
+        const breadcrumbTool = document.getElementById('breadcrumb-tool');
+        const sidebarAddin = document.getElementById('sidebar-addin');
+        // Download elements removed - downloads no longer public
+        const statusDot = document.querySelector('.status-dot');
+        const requirementsList = document.getElementById('requirements-list');
+        const changelogContent = document.getElementById('changelog-content');
+        const changelogSection = document.getElementById('changelog-section');
+        const docsBtn = document.getElementById('docs-btn');
+
+        // Functions
+        function renderRibbon(regionId) {
+            const region = REGIONS[regionId];
+            ribbon.innerHTML = '';
+
+            region.panels.forEach(panel => {
+                const panelEl = document.createElement('div');
+                panelEl.className = 'panel';
+
+                const toolsEl = document.createElement('div');
+                toolsEl.className = 'panel-tools';
+
+                panel.tools.forEach(tool => {
+                    const btn = document.createElement('button');
+                    btn.className = 'tool-btn';
+                    btn.dataset.toolId = tool.id;
+
+                    const iconStyle = tool.rotate ? 'transform: rotate(180deg);' : '';
+                    
+                    // ICON SELECTION LOGIC
+                    const customId = ICON_MAP[tool.id];
+                    let iconContent = '';
+                    
+                    if (customId) {
+                        const svg = createIconSVG(customId, region.color);
+                        if (svg) {
+                            iconContent = svg;
+                        }
+                    }
+                    
+                    if (!iconContent) {
+                        // Fallback to lucide
+                        iconContent = `<i data-lucide="${tool.icon}" class="icon" style="${iconStyle}"></i>`;
+                    }
+
+                    btn.innerHTML = `
+                        <div class="icon" style="${iconStyle}">${iconContent}</div>
+                        <span class="label">${tool.label}</span>
+                    `;
+
+                    btn.addEventListener('click', () => selectTool(tool));
+                    toolsEl.appendChild(btn);
+                });
+
+                const labelEl = document.createElement('div');
+                labelEl.className = 'panel-label';
+                labelEl.innerHTML = `<span>${panel.title}</span>`;
+
+                panelEl.appendChild(toolsEl);
+                panelEl.appendChild(labelEl);
+                ribbon.appendChild(panelEl);
+            });
+
+            lucide.createIcons();
+        }
+
+        function selectTool(tool) {
+            selectedTool = tool;
+
+            // Update selected state
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.toggle('selected', btn.dataset.toolId === tool.id);
+            });
+
+            // Update breadcrumb
+            breadcrumbTool.textContent = tool.label;
+
+            // Render detail
+            renderDetail(tool);
+
+            // Render requirements
+            renderRequirements(tool);
+
+            // Render changelog
+            renderChangelog(tool);
+        }
+
+        function renderRequirements(tool) {
+            const requirements = tool.requirements || [];
+
+            if (requirements.length === 0) {
+                requirementsList.innerHTML = '<span class="requirements-empty">No specific requirements</span>';
+            } else {
+                requirementsList.innerHTML = requirements.map(req => `
+                    <div class="requirement-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <span>${req}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderChangelog(tool) {
+            changelogContent.textContent = tool.changelog || 'No changelog entries';
+        }
+
+        function renderDetail(tool) {
+            const region = REGIONS[activeRegion];
+            
+            // Icon Generation
+            const customId = ICON_MAP[tool.id];
+            let iconContent = '';
+            
+            if (customId) {
+                const svg = createIconSVG(customId, region.color);
+                if (svg) {
+                    iconContent = svg;
+                }
+            }
+            
+            if (!iconContent) {
+                 iconContent = `<i data-lucide="${tool.icon}" ${tool.rotate ? 'style="transform: rotate(180deg);"' : ''}></i>`;
+            }
+
+            detailMain.innerHTML = `
+                <div class="detail-header">
+                    <div class="detail-icon" style="color: ${region.color};">
+                        ${iconContent}
+                    </div>
+                    <div class="detail-title">
+                        <h2>${tool.label}</h2>
+                        <div class="detail-badges">
+                            <span class="badge">ID: ${tool.id}</span>
+                            <span class="badge active">ACTIVE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>Function Description</h3>
+                    <div class="detail-box">
+                        <p>${tool.fn}</p>
+                    </div>
+                </div>
+
+                <div class="detail-section" style="margin-top: 24px;">
+                    <h3>Video Reference</h3>
+                    ${tool.videoRef
+                        ? `<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; border: 1px solid var(--border);">
+                            <iframe src="https://www.youtube.com/embed/${tool.videoRef}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" allowfullscreen></iframe>
+                           </div>`
+                        : `<div class="detail-box detail-box-large mono"><p>No video reference available</p></div>`
+                    }
+                </div>
+            `;
+
+            lucide.createIcons();
+        }
+
+        function showReleaseInfo(region) {
+            const version = region.version || '';
+            const reqsHtml = region.addinRequirements && region.addinRequirements.length > 0
+                ? `<h3>Requirements</h3><ul>${region.addinRequirements.map(r => `<li>${r}</li>`).join('')}</ul>`
+                : '';
+
+            detailMain.innerHTML = `
+                <div class="release-info">
+                    <h2>${region.name} ${version}</h2>
+                    <p class="release-description">${region.description || ''}</p>
+                    <p>${region.supportedVersions || '<strong>Supported Revit Versions:</strong> 2022, 2023, 2024, 2025, 2026'}</p>
+                    <h3>Installation</h3>
+                    <ol>${(region.installation || []).map(s => `<li>${s}</li>`).join('')}</ol>
+                    ${reqsHtml}
+                </div>
+            `;
+        }
+
+        function switchRegion(regionId) {
+            activeRegion = regionId;
+            selectedTool = null;
+            const region = REGIONS[regionId];
+
+            // Update app data attribute
+            app.dataset.activeRegion = regionId;
+
+            // Update tabs
+            tabs.forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.region === regionId);
+            });
+
+            // Update sidebar
+            breadcrumbRegion.textContent = region.label;
+            breadcrumbTool.textContent = 'Overview';
+            sidebarAddin.textContent = region.name;
+            document.getElementById('sidebar-platform-label').textContent = region.platformLabel || 'Revit Versions';
+            document.getElementById('sidebar-platform-versions').textContent = region.platformVersions || '2022 - 2026';
+            statusDot.style.background = region.colorVar;
+
+            // Download buttons removed - downloads no longer public
+
+            // Update docs button
+            if (region.docsUrl) {
+                docsBtn.href = region.docsUrl;
+                docsBtn.style.display = '';
+            } else {
+                docsBtn.style.display = 'none';
+            }
+
+            // Render ribbon
+            renderRibbon(regionId);
+
+            // Show release info as default view
+            showReleaseInfo(region);
+
+            // Reset requirements to addin-level requirements
+            if (region.addinRequirements && region.addinRequirements.length > 0) {
+                requirementsList.innerHTML = region.addinRequirements
+                    .map(r => `<div class="requirement-item"><i data-lucide="check-circle-2"></i><span>${r}</span></div>`)
+                    .join('');
+            } else {
+                requirementsList.innerHTML = '<span class="requirements-empty">No additional requirements</span>';
+            }
+
+            // Show main add-in changelog (if available)
+            changelogContent.textContent = region.changelog || 'No changelog entries';
+
+            lucide.createIcons();
+        }
+
+        // Event listeners
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => switchRegion(tab.dataset.region));
+        });
+
+        // Init
+        switchRegion('scan');
+    </script>
+</body>
+</html>

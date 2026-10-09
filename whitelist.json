@@ -1,0 +1,39 @@
+{
+  "authorized_users": [
+    "KevinEliteCAD",
+    "mikemc03",
+    "BillEliteCAD",
+    "jamditis5CP2S",
+    "dominikNRQPE",
+    "scottbN7Y68",
+    "tommY5349",
+    "david54HS2",
+    "teofiloN6AYG",
+    "davidmNMCV4",
+    "MsotoU2LEA",
+    "mikeZmSD5",
+    "tomTH4UR",
+    "benL3U4f",
+    "fisnik44CHC",
+    "alexpAXVJ6",
+    "paola9AF2Z",
+    "Mikau2v4p",
+    "leonEQSYJ",
+    "Intern1EFRUZ",
+    "teofiloolivero1J5S23",
+    "mikeIKYVQK"
+    
+  ],
+  "authorized_domains": [
+    "@elitecaddesign.net"
+  ],
+  "features": {
+    "EliteScan": ["*"],
+    "EliteDraft": ["*"],
+    "EliteCoord": ["*"],
+    "EliteCore": ["*"],
+    "EliteClashManager": ["*"],
+    "EliteCADNavisTools": ["*"],
+    "EliteCAD.Navis.IFCExport": ["*"]
+  }
+}
